@@ -8,11 +8,11 @@ import {
 } from "lucide-react";
 import * as React from "react";
 
-import type { AttentionItem } from "@/features/myzone/lib/attention";
-import { waitingDays } from "@/features/myzone/lib/attention";
-import { deriveQuickOptions } from "@/features/myzone/lib/quickOptions";
-import { extractTaskLine } from "@/features/myzone/lib/taskExtraction";
-import type { AskType } from "@/features/myzone/lib/taskExtraction";
+import type { AttentionItem } from "@/features/attention/lib/attention";
+import { waitingDays } from "@/features/attention/lib/attention";
+import { deriveQuickOptions } from "@/features/attention/lib/quickOptions";
+import { extractTaskLine } from "@/features/attention/lib/taskExtraction";
+import type { AskType } from "@/features/attention/lib/taskExtraction";
 import { cn } from "@/shared/lib/cn";
 import { Button } from "@/shared/ui/button";
 import { Markdown } from "@/shared/ui/markdown";
@@ -121,7 +121,7 @@ export function AttentionCard({
         selected && "ring-2 ring-primary/40",
       )}
       data-selected={selected || undefined}
-      data-testid={`myzone-card-${item.id}`}
+      data-testid={`attention-card-${item.id}`}
     >
       {/* biome-ignore lint/a11y/noStaticElementInteractions: card body toggle is a convenience; the expand button and actions are keyboard-reachable */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard expand is handled by the view-level j/k/e bindings */}
@@ -132,13 +132,13 @@ export function AttentionCard({
               "shrink-0 rounded-full px-2 py-0.5 text-2xs font-medium",
               badge.className,
             )}
-            data-testid="myzone-card-badge"
+            data-testid="attention-card-badge"
           >
             {badge.label}
           </span>
           <span
             className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground"
-            data-testid="myzone-card-ask"
+            data-testid="attention-card-ask"
           >
             {cardHeadline(item)}
           </span>
@@ -165,7 +165,7 @@ export function AttentionCard({
             {item.zone === "needsMe" && !isHeadsUp ? (
               <>
                 <Button
-                  data-testid="myzone-action-waiting"
+                  data-testid="attention-action-waiting"
                   disabled={!canPost}
                   onClick={() => onAction(item, "waiting")}
                   size="xs"
@@ -176,7 +176,7 @@ export function AttentionCard({
                   Waiting
                 </Button>
                 <Button
-                  data-testid="myzone-action-done"
+                  data-testid="attention-action-done"
                   disabled={!canPost}
                   onClick={() => onAction(item, "done")}
                   size="xs"
@@ -190,7 +190,7 @@ export function AttentionCard({
             ) : null}
             {item.zone === "needsMe" && isHeadsUp ? (
               <Button
-                data-testid="myzone-action-noted"
+                data-testid="attention-action-noted"
                 disabled={!canPost}
                 onClick={() => onAction(item, "noted")}
                 size="xs"
@@ -204,7 +204,7 @@ export function AttentionCard({
             {item.zone === "waiting" ? (
               <>
                 <Button
-                  data-testid="myzone-action-done"
+                  data-testid="attention-action-done"
                   disabled={!canPost}
                   onClick={() => onAction(item, "done")}
                   size="xs"
@@ -215,7 +215,7 @@ export function AttentionCard({
                   Done
                 </Button>
                 <Button
-                  data-testid="myzone-action-restore"
+                  data-testid="attention-action-restore"
                   disabled={isPending}
                   onClick={() => onRestore(item.id)}
                   size="xs"
@@ -229,7 +229,7 @@ export function AttentionCard({
             ) : null}
             {item.zone === "done" ? (
               <Button
-                data-testid="myzone-action-restore"
+                data-testid="attention-action-restore"
                 disabled={isPending}
                 onClick={() => onRestore(item.id)}
                 size="xs"
@@ -241,7 +241,7 @@ export function AttentionCard({
               </Button>
             ) : null}
             <Button
-              data-testid="myzone-action-open"
+              data-testid="attention-action-open"
               disabled={!canOpen}
               onClick={() => onOpen(item)}
               size="xs"
@@ -254,7 +254,7 @@ export function AttentionCard({
             {item.zone === "needsMe" && !isHeadsUp ? (
               <Button
                 aria-label={expanded ? "Collapse" : "Expand"}
-                data-testid="myzone-action-expand"
+                data-testid="attention-action-expand"
                 onClick={() => onToggleExpanded(item.id)}
                 size="xs"
                 type="button"
@@ -269,7 +269,7 @@ export function AttentionCard({
       {expanded ? (
         <div
           className="mt-3 border-t border-border/60 pt-3"
-          data-testid="myzone-card-expanded"
+          data-testid="attention-card-expanded"
         >
           <div className="text-sm text-foreground/90">
             <Markdown content={content} />
@@ -278,7 +278,7 @@ export function AttentionCard({
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               {quickOptions.map((option) => (
                 <Button
-                  data-testid="myzone-quick-option"
+                  data-testid="attention-quick-option"
                   disabled={!canPost}
                   key={option}
                   onClick={() => onReply(item, option)}
@@ -296,7 +296,7 @@ export function AttentionCard({
               // biome-ignore lint/a11y/noAutofocus: expanding a card is an explicit intent to reply
               autoFocus
               className="min-h-16 w-full flex-1 resize-y rounded-lg border border-border/60 bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/50"
-              data-testid="myzone-reply-input"
+              data-testid="attention-reply-input"
               onChange={(event) => setReplyText(event.target.value)}
               placeholder={
                 canOpen
@@ -307,7 +307,7 @@ export function AttentionCard({
             />
             <div className="flex shrink-0 flex-col gap-1">
               <Button
-                data-testid="myzone-action-reply"
+                data-testid="attention-action-reply"
                 disabled={!canPost || replyText.trim().length === 0}
                 onClick={handleReply}
                 size="xs"

@@ -4,22 +4,22 @@ import { createFileRoute } from "@tanstack/react-router";
 import { usePreviewFeatureWarning } from "@/shared/features";
 import { ViewLoadingFallback } from "@/shared/ui/ViewLoadingFallback";
 
-const MyZoneScreen = React.lazy(async () => {
-  const module = await import("@/features/myzone/ui/MyZoneScreen");
-  return { default: module.MyZoneScreen };
+const AttentionScreen = React.lazy(async () => {
+  const module = await import("@/features/attention/ui/AttentionScreen");
+  return { default: module.AttentionScreen };
 });
 
-export const Route = createFileRoute("/myzone")({
-  component: MyZoneRouteComponent,
+export const Route = createFileRoute("/attention")({
+  component: AttentionRouteComponent,
 });
 
-function MyZoneRouteComponent() {
-  usePreviewFeatureWarning("myzone");
+function AttentionRouteComponent() {
+  usePreviewFeatureWarning("attention");
   return (
     <React.Suspense
       fallback={<ViewLoadingFallback includeHeader kind="pulse" />}
     >
-      <MyZoneScreen />
+      <AttentionScreen />
     </React.Suspense>
   );
 }

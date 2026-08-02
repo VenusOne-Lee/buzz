@@ -4,16 +4,16 @@ import type {
   AttentionItem,
   AttentionProjection,
   AttentionZone,
-} from "@/features/myzone/lib/attention";
-import { isSameLocalDay } from "@/features/myzone/lib/attention";
+} from "@/features/attention/lib/attention";
+import { isSameLocalDay } from "@/features/attention/lib/attention";
 import {
   AttentionCard,
   type AttentionCardAction,
-} from "@/features/myzone/ui/AttentionCard";
+} from "@/features/attention/ui/AttentionCard";
 import { cn } from "@/shared/lib/cn";
 import { TopChromeInsetHeader } from "@/shared/layout/TopChromeInsetHeader";
 
-type MyZoneViewProps = {
+type AttentionViewProps = {
   errorMessage?: string;
   isLoading: boolean;
   onAction: (item: AttentionItem, action: AttentionCardAction) => void;
@@ -40,7 +40,7 @@ const sectionHeaderClassName =
  * The Attention screen: tabbed Needs Me / Waiting / Done views over the
  * attention projection, with j/k keyboard navigation and per-card actions.
  */
-export function MyZoneView({
+export function AttentionView({
   errorMessage,
   isLoading,
   onAction,
@@ -49,7 +49,7 @@ export function MyZoneView({
   onRestore,
   pendingIds,
   projection,
-}: MyZoneViewProps) {
+}: AttentionViewProps) {
   const [activeZone, setActiveZone] = React.useState<AttentionZone>("needsMe");
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
@@ -94,7 +94,7 @@ export function MyZoneView({
     const nextId = visibleItems[next].id;
     setSelectedId(nextId);
     document
-      .querySelector(`[data-testid="myzone-card-${nextId}"]`)
+      .querySelector(`[data-testid="attention-card-${nextId}"]`)
       ?.scrollIntoView({ block: "nearest" });
   };
 
@@ -189,7 +189,7 @@ export function MyZoneView({
     // biome-ignore lint/a11y/noStaticElementInteractions: list-level shortcuts; every action is also reachable via the focusable card buttons
     <div
       className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden outline-none"
-      data-testid="myzone-view"
+      data-testid="attention-view"
       onKeyDown={handleKeyDown}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: the view is a keyboard command surface (j/k/e/r/w/d/n/o) like a mail list
       tabIndex={0}
@@ -213,7 +213,7 @@ export function MyZoneView({
           <button
             className={tabButtonClassName}
             data-active={activeZone === tab.zone}
-            data-testid={`myzone-tab-${tab.zone}`}
+            data-testid={`attention-tab-${tab.zone}`}
             key={tab.zone}
             onClick={() => switchZone(tab.zone)}
             type="button"
@@ -228,10 +228,10 @@ export function MyZoneView({
                     : "bg-muted text-muted-foreground",
                 )}
               >
-                <span data-testid="myzone-count-needs">
+                <span data-testid="attention-count-needs">
                   {projection.needsMe.length} need you
                 </span>
-                <span data-testid="myzone-count-note">
+                <span data-testid="attention-count-note">
                   {" "}
                   · {projection.headsUp.length} to note
                 </span>
@@ -269,7 +269,7 @@ export function MyZoneView({
           needsMeEmpty ? (
             <div
               className="flex flex-1 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border/60 px-4 py-12 text-center"
-              data-testid="myzone-empty-state"
+              data-testid="attention-empty-state"
             >
               <p className="text-sm text-muted-foreground">
                 Nothing needs you. {projection.waiting.length} items are waiting
@@ -284,9 +284,9 @@ export function MyZoneView({
               </button>
             </div>
           ) : (
-            <div className="flex flex-col" data-testid="myzone-card-list">
+            <div className="flex flex-col" data-testid="attention-card-list">
               {overdue.length > 0 ? (
-                <section data-testid="myzone-section-overdue">
+                <section data-testid="attention-section-overdue">
                   <h2 className={sectionHeaderClassName}>
                     Waiting on you since
                   </h2>
@@ -296,7 +296,7 @@ export function MyZoneView({
                 </section>
               ) : null}
               {today.length > 0 ? (
-                <section data-testid="myzone-section-today">
+                <section data-testid="attention-section-today">
                   <h2 className={sectionHeaderClassName}>Today</h2>
                   <div className="flex flex-col gap-2">
                     {today.map(renderCard)}
@@ -304,7 +304,7 @@ export function MyZoneView({
                 </section>
               ) : null}
               {projection.headsUp.length > 0 ? (
-                <section data-testid="myzone-section-note">
+                <section data-testid="attention-section-note">
                   <h2 className={sectionHeaderClassName}>To note</h2>
                   <div className="flex flex-col gap-2">
                     {projection.headsUp.map(renderCard)}
@@ -316,7 +316,7 @@ export function MyZoneView({
         ) : visibleItems.length === 0 ? (
           <div
             className="flex flex-1 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border/60 px-4 py-12 text-center"
-            data-testid="myzone-empty-state"
+            data-testid="attention-empty-state"
           >
             <p className="text-sm text-muted-foreground">
               {activeZone === "waiting"
@@ -325,7 +325,10 @@ export function MyZoneView({
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2" data-testid="myzone-card-list">
+          <div
+            className="flex flex-col gap-2"
+            data-testid="attention-card-list"
+          >
             {visibleItems.map(renderCard)}
           </div>
         )}

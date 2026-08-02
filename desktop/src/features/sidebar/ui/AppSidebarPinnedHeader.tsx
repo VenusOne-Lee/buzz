@@ -20,7 +20,7 @@ type SidebarSelectedView =
   | "workflows"
   | "pulse"
   | "projects"
-  | "myzone";
+  | "attention";
 
 type AppSidebarPinnedHeaderProps = {
   channelLabels: Record<string, string>;
@@ -40,7 +40,7 @@ type AppSidebarPrimaryMenuProps = {
   homeBadgeCount: number;
   onSelectAgents: () => void;
   onSelectHome: () => void;
-  onSelectMyZone: () => void;
+  onSelectAttention: () => void;
   onSelectProjects: () => void;
   onSelectPulse: () => void;
   onSelectWorkflows: () => void;
@@ -86,7 +86,7 @@ export function AppSidebarPrimaryMenu({
   homeBadgeCount,
   onSelectAgents,
   onSelectHome,
-  onSelectMyZone,
+  onSelectAttention,
   onSelectProjects,
   onSelectPulse,
   onSelectWorkflows,
@@ -118,12 +118,12 @@ export function AppSidebarPrimaryMenu({
             </SidebarMenuBadge>
           ) : null}
         </SidebarMenuItem>
-        <FeatureGate feature="myzone">
+        <FeatureGate feature="attention">
           <SidebarMenuItem>
             <SidebarMenuButton
-              data-testid="open-myzone-view"
-              isActive={selectedView === "myzone"}
-              onClick={onSelectMyZone}
+              data-testid="open-attention-view"
+              isActive={selectedView === "attention"}
+              onClick={onSelectAttention}
               tooltip="Attention"
               type="button"
             >

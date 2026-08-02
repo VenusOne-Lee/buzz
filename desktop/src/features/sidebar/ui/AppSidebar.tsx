@@ -106,7 +106,7 @@ type AppSidebarProps = {
     | "workflows"
     | "pulse"
     | "projects"
-    | "myzone";
+    | "attention";
   unreadChannelCounts: ReadonlyMap<string, number>;
   unreadChannelIds: ReadonlySet<string>;
   communities: Community[];
@@ -144,7 +144,7 @@ type AppSidebarProps = {
   onRemoveCommunity: (id: string) => void;
   onCreateAgent: () => void;
   onSelectAgents: () => void;
-  onSelectMyZone: () => void;
+  onSelectAttention: () => void;
   onSelectProjects: () => void;
   onSelectPulse: () => void;
   onSelectWorkflows: () => void;
@@ -214,7 +214,7 @@ export function AppSidebar({
   onRemoveCommunity,
   onCreateAgent,
   onSelectAgents,
-  onSelectMyZone,
+  onSelectAttention,
   onSelectProjects,
   onSelectPulse,
   onSelectWorkflows,
@@ -613,7 +613,7 @@ export function AppSidebar({
                 homeBadgeCount={homeBadgeCount}
                 onSelectAgents={onSelectAgents}
                 onSelectHome={onSelectHome}
-                onSelectMyZone={onSelectMyZone}
+                onSelectAttention={onSelectAttention}
                 onSelectProjects={onSelectProjects}
                 onSelectPulse={onSelectPulse}
                 onSelectWorkflows={onSelectWorkflows}

@@ -1,4 +1,4 @@
-import type { AskType } from "@/features/myzone/lib/taskExtraction";
+import type { AskType } from "@/features/attention/lib/taskExtraction";
 
 const MAX_OPTION_LENGTH = 60;
 const MAX_OPTIONS = 4;

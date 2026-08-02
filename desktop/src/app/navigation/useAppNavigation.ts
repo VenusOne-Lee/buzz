@@ -79,11 +79,11 @@ export function useAppNavigation() {
     [commitNavigation],
   );
 
-  const goMyZone = React.useCallback(
+  const goAttention = React.useCallback(
     (behavior?: NavigationBehavior) =>
       commitNavigation(
         {
-          to: "/myzone",
+          to: "/attention",
         },
         behavior,
       ),
@@ -310,7 +310,7 @@ export function useAppNavigation() {
     goChannel,
     goForumPost,
     goHome,
-    goMyZone,
+    goAttention,
     goNewMessage,
     goProject,
     goProjects,

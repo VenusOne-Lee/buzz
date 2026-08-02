@@ -4,9 +4,9 @@ import {
   pruneZoneState,
   type ZoneStateEntry,
   type ZoneStateMap,
-} from "@/features/myzone/lib/attention";
+} from "@/features/attention/lib/attention";
 
-const STORAGE_KEY = "buzz-myzone-zones.v1";
+const STORAGE_KEY = "buzz-attention-zones.v1";
 
 function storageKey(pubkey: string) {
   return `${STORAGE_KEY}:${pubkey}`;
@@ -53,11 +53,11 @@ function writeStoredState(key: string, state: ZoneStateMap) {
 }
 
 /**
- * Per-user, per-device zone state for MyZone items, keyed by conversation id.
+ * Per-user, per-device zone state for Attention items, keyed by conversation id.
  * Prototype persistence: localStorage, mirroring the Inbox's local done set.
  * Durable cross-device state is a follow-up architecture decision.
  */
-export function useMyZoneState(pubkey: string | undefined) {
+export function useAttentionZoneState(pubkey: string | undefined) {
   const normalizedPubkey = pubkey?.trim().toLowerCase() ?? "";
 
   const [zoneState, setZoneState] = React.useState<ZoneStateMap>(() =>
@@ -101,4 +101,4 @@ export function useMyZoneState(pubkey: string | undefined) {
   return { markDone, markWaiting, restore, zoneState };
 }
 
-export type MyZoneState = ReturnType<typeof useMyZoneState>;
+export type AttentionState = ReturnType<typeof useAttentionZoneState>;

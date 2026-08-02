@@ -26,7 +26,7 @@
       "platforms": ["desktop"]
     },
     {
-      "id": "myzone",
+      "id": "attention",
       "name": "Attention",
       "description": "Personal attention layer: what needs you right now, across channels and agents",
       "platforms": ["desktop"],

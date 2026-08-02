@@ -3,9 +3,9 @@ import { getThreadReference } from "@/features/messages/lib/threading";
 import {
   type AskType,
   classifyAsk,
-} from "@/features/myzone/lib/taskExtraction";
+} from "@/features/attention/lib/taskExtraction";
 
-export type { AskType } from "@/features/myzone/lib/taskExtraction";
+export type { AskType } from "@/features/attention/lib/taskExtraction";
 
 export type AttentionZone = "needsMe" | "waiting" | "done";
 
@@ -51,7 +51,7 @@ const KIND_WORKFLOW_APPROVAL_REQUESTED = 46010;
 const KIND_STREAM_REMINDER = 40007;
 
 /**
- * MyZone only surfaces items that plausibly need the user: action-required
+ * Attention only surfaces items that plausibly need the user: action-required
  * feed items and direct mentions. Ambient channel activity stays in the
  * Inbox — the two surfaces answer different questions.
  */
@@ -147,7 +147,7 @@ export function isSameLocalDay(aSeconds: number, bSeconds: number): boolean {
 }
 
 /**
- * Split attention-worthy inbox items into the three MyZone views.
+ * Split attention-worthy inbox items into the three Attention views.
  *
  * Rules:
  * - No zone entry → Needs Me.

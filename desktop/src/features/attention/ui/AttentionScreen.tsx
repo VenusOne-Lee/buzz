@@ -9,11 +9,11 @@ import {
   type AttentionItem,
   attentionThreadRootId,
   projectAttention,
-} from "@/features/myzone/lib/attention";
-import type { AttentionCardAction } from "@/features/myzone/ui/AttentionCard";
-import { MyZoneView } from "@/features/myzone/ui/MyZoneView";
-import { useActionQueue } from "@/features/myzone/useActionQueue";
-import { useMyZoneState } from "@/features/myzone/useMyZoneState";
+} from "@/features/attention/lib/attention";
+import type { AttentionCardAction } from "@/features/attention/ui/AttentionCard";
+import { AttentionView } from "@/features/attention/ui/AttentionView";
+import { useActionQueue } from "@/features/attention/useActionQueue";
+import { useAttentionZoneState } from "@/features/attention/useAttentionZoneState";
 import { useUsersBatchQuery } from "@/features/profile/hooks";
 import { useIdentityQuery } from "@/shared/api/hooks";
 import {
@@ -43,14 +43,14 @@ const ACTION_CONFIG: Record<
   },
 };
 
-export function MyZoneScreen() {
+export function AttentionScreen() {
   const identityQuery = useIdentityQuery();
   const currentPubkey = identityQuery.data?.pubkey;
   const homeFeedQuery = useHomeFeedQuery();
   const channelsQuery = useChannelsQuery();
   const { goChannel } = useAppNavigation();
   const { markDone, markWaiting, restore, zoneState } =
-    useMyZoneState(currentPubkey);
+    useAttentionZoneState(currentPubkey);
   const sendMutation = useSendMessageMutation(null, identityQuery.data);
   const { mutateAsync: sendMessage } = sendMutation;
   const { pendingIds, queueAction } = useActionQueue();
@@ -168,7 +168,7 @@ export function MyZoneScreen() {
   );
 
   return (
-    <MyZoneView
+    <AttentionView
       errorMessage={
         homeFeedQuery.error !== null && homeFeedQuery.error !== undefined
           ? isRelayUnreachableError(homeFeedQuery.error)
