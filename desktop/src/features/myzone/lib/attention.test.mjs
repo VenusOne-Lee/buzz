@@ -10,11 +10,13 @@ import {
 } from "./attention.ts";
 
 const NOW = 1_700_000_000;
+const ASK_CONTENT = "Please review the plan.";
 
 function makeInboxItem(overrides = {}) {
   const {
     conversationId = "conv-1",
     categories = ["mention"],
+    content = ASK_CONTENT,
     isActionRequired = false,
     latestActivityAt = NOW - 600,
     kind = 9,
@@ -25,7 +27,7 @@ function makeInboxItem(overrides = {}) {
     id: `${conversationId}-latest`,
     kind,
     pubkey: "a".repeat(64),
-    content: "hello",
+    content,
     createdAt: latestActivityAt,
     channelId: "channel-1",
     channelName: "general",
@@ -45,9 +47,9 @@ function makeInboxItem(overrides = {}) {
     isActionRequired,
     latestActivityAt,
     mentionNames: [],
-    preview: "hello",
+    preview: content,
     senderLabel: "Alice",
-    subject: "hello",
+    subject: content,
     timestampLabel: "",
     unreadCount: 1,
   };
@@ -74,13 +76,40 @@ test("mention and needs_action items are attention-worthy, plain activity is not
   );
 });
 
-test("items with no zone entry land in Needs Me", () => {
-  const projection = projectAttention([makeInboxItem()], {}, NOW);
+test("ask-bearing items land in Needs Me, ask-less mentions demote to Heads up", () => {
+  const projection = projectAttention(
+    [
+      makeInboxItem({ conversationId: "conv-ask" }),
+      makeInboxItem({ conversationId: "conv-hi", content: "hello" }),
+    ],
+    {},
+    NOW,
+  );
   assert.equal(projection.needsMe.length, 1);
-  assert.equal(projection.waiting.length, 0);
-  assert.equal(projection.done.length, 0);
+  assert.equal(projection.needsMe[0].id, "conv-ask");
   assert.equal(projection.needsMe[0].zone, "needsMe");
   assert.equal(projection.needsMe[0].reactivated, false);
+  assert.equal(projection.needsMe[0].askType, "review");
+  assert.equal(projection.needsMe[0].ask, ASK_CONTENT);
+
+  assert.equal(projection.headsUp.length, 1);
+  assert.equal(projection.headsUp[0].id, "conv-hi");
+  assert.equal(projection.headsUp[0].askType, "headsUp");
+  assert.equal(projection.headsUp[0].ask, null);
+
+  assert.equal(projection.waiting.length, 0);
+  assert.equal(projection.done.length, 0);
+});
+
+test("config-nudge noise demotes to Heads up", () => {
+  const projection = projectAttention(
+    [makeInboxItem({ content: "Please update buzz:config-nudge settings." })],
+    {},
+    NOW,
+  );
+  assert.equal(projection.needsMe.length, 0);
+  assert.equal(projection.headsUp.length, 1);
+  assert.equal(projection.headsUp[0].askType, "headsUp");
 });
 
 test("plain activity items are excluded from every view", () => {
@@ -90,8 +119,42 @@ test("plain activity items are excluded from every view", () => {
     NOW,
   );
   assert.equal(projection.needsMe.length, 0);
+  assert.equal(projection.headsUp.length, 0);
   assert.equal(projection.waiting.length, 0);
   assert.equal(projection.done.length, 0);
+});
+
+test("kind 46010 is an approval, kind 40007 falls back to review", () => {
+  const approval = projectAttention(
+    [
+      makeInboxItem({
+        categories: ["needs_action"],
+        isActionRequired: true,
+        kind: 46010,
+        content: "hello",
+      }),
+    ],
+    {},
+    NOW,
+  );
+  assert.equal(approval.needsMe.length, 1);
+  assert.equal(approval.needsMe[0].askType, "approval");
+  assert.notEqual(approval.needsMe[0].ask, null);
+
+  const reminder = projectAttention(
+    [
+      makeInboxItem({
+        categories: ["needs_action"],
+        isActionRequired: true,
+        kind: 40007,
+        content: "hello",
+      }),
+    ],
+    {},
+    NOW,
+  );
+  assert.equal(reminder.needsMe.length, 1);
+  assert.equal(reminder.needsMe[0].askType, "review");
 });
 
 test("a parked waiting item stays in Waiting while activity is older than the park", () => {
@@ -106,7 +169,7 @@ test("a parked waiting item stays in Waiting while activity is older than the pa
   assert.equal(projection.waiting[0].zoneChangedAt, NOW - 60);
 });
 
-test("new activity after parking reactivates the item into Needs Me", () => {
+test("new activity after parking reactivates ask-bearing items into Needs Me", () => {
   const item = makeInboxItem({ latestActivityAt: NOW - 10 });
   for (const zone of ["waiting", "done"]) {
     const projection = projectAttention(
@@ -116,9 +179,22 @@ test("new activity after parking reactivates the item into Needs Me", () => {
     );
     assert.equal(projection.needsMe.length, 1, `${zone} should reactivate`);
     assert.equal(projection.needsMe[0].reactivated, true);
+    assert.equal(projection.headsUp.length, 0);
     assert.equal(projection.waiting.length, 0);
     assert.equal(projection.done.length, 0);
   }
+});
+
+test("new activity on an ask-less parked item reactivates into Heads up", () => {
+  const item = makeInboxItem({ content: "hello", latestActivityAt: NOW - 10 });
+  const projection = projectAttention(
+    [item],
+    { "conv-1": { zone: "waiting", changedAt: NOW - 3_600 } },
+    NOW,
+  );
+  assert.equal(projection.needsMe.length, 0);
+  assert.equal(projection.headsUp.length, 1);
+  assert.equal(projection.headsUp[0].reactivated, true);
 });
 
 test("done items show in Done until retention expires, then disappear", () => {
@@ -145,10 +221,11 @@ test("done items show in Done until retention expires, then disappear", () => {
   );
   assert.equal(expired.done.length, 0);
   assert.equal(expired.needsMe.length, 0);
+  assert.equal(expired.headsUp.length, 0);
   assert.equal(expired.waiting.length, 0);
 });
 
-test("needs me sorts by latest activity, waiting and done by park time", () => {
+test("needs me sorts oldest first, waiting and done by park time", () => {
   const older = makeInboxItem({
     conversationId: "conv-old",
     latestActivityAt: NOW - 5_000,
@@ -160,7 +237,7 @@ test("needs me sorts by latest activity, waiting and done by park time", () => {
   const needsMe = projectAttention([older, newer], {}, NOW).needsMe;
   assert.deepEqual(
     needsMe.map((entry) => entry.id),
-    ["conv-new", "conv-old"],
+    ["conv-old", "conv-new"],
   );
 
   const waiting = projectAttention(
@@ -173,6 +250,24 @@ test("needs me sorts by latest activity, waiting and done by park time", () => {
   ).waiting;
   assert.deepEqual(
     waiting.map((entry) => entry.id),
+    ["conv-new", "conv-old"],
+  );
+});
+
+test("heads up sorts newest first", () => {
+  const older = makeInboxItem({
+    conversationId: "conv-old",
+    content: "hello",
+    latestActivityAt: NOW - 5_000,
+  });
+  const newer = makeInboxItem({
+    conversationId: "conv-new",
+    content: "hello",
+    latestActivityAt: NOW - 100,
+  });
+  const headsUp = projectAttention([older, newer], {}, NOW).headsUp;
+  assert.deepEqual(
+    headsUp.map((entry) => entry.id),
     ["conv-new", "conv-old"],
   );
 });

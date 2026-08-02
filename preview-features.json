@@ -27,7 +27,7 @@
     },
     {
       "id": "myzone",
-      "name": "MyZone",
+      "name": "Attention",
       "description": "Personal attention layer: what needs you right now, across channels and agents",
       "platforms": ["desktop"],
       "defaultEnabled": true

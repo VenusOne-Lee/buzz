@@ -1,5 +1,11 @@
 import type { InboxItem } from "@/features/home/lib/inbox";
 import { getThreadReference } from "@/features/messages/lib/threading";
+import {
+  type AskType,
+  classifyAsk,
+} from "@/features/myzone/lib/taskExtraction";
+
+export type { AskType } from "@/features/myzone/lib/taskExtraction";
 
 export type AttentionZone = "needsMe" | "waiting" | "done";
 
@@ -18,6 +24,9 @@ export type AttentionItem = {
   inboxItem: InboxItem;
   /** Why this needs the user, in one short phrase. */
   reason: string;
+  /** The one-line ask headline; null for headsUp items. */
+  ask: string | null;
+  askType: AskType;
   zone: AttentionZone;
   zoneChangedAt: number | null;
   /**
@@ -29,6 +38,8 @@ export type AttentionItem = {
 
 export type AttentionProjection = {
   needsMe: AttentionItem[];
+  /** Mentions with no detectable ask — demoted, never counted as Needs Me. */
+  headsUp: AttentionItem[];
   waiting: AttentionItem[];
   done: AttentionItem[];
 };
@@ -78,20 +89,61 @@ export function attentionThreadRootId(item: InboxItem): string | null {
   return getThreadReference(item.item.tags).rootId;
 }
 
+function classifyInboxItem(item: InboxItem): {
+  ask: string | null;
+  askType: AskType;
+} {
+  // Kind-level needs_action events carry their type; prose is classified.
+  if (item.item.kind === KIND_WORKFLOW_APPROVAL_REQUESTED) {
+    return {
+      ask: classifyAsk(item.item.content).ask ?? item.preview,
+      askType: "approval",
+    };
+  }
+  const classification = classifyAsk(item.item.content);
+  if (item.item.kind === KIND_STREAM_REMINDER) {
+    return {
+      ask: classification.ask ?? item.preview,
+      askType:
+        classification.type === "headsUp" ? "review" : classification.type,
+    };
+  }
+  return { ask: classification.ask, askType: classification.type };
+}
+
 function toAttentionItem(
   item: InboxItem,
   zone: AttentionZone,
   entry: ZoneStateEntry | undefined,
   reactivated: boolean,
 ): AttentionItem {
+  const { ask, askType } = classifyInboxItem(item);
   return {
     id: item.conversationId,
     inboxItem: item,
     reason: attentionReason(item),
+    ask,
+    askType,
     zone,
     zoneChangedAt: entry?.changedAt ?? null,
     reactivated,
   };
+}
+
+/** Whole days an item has been sitting on the user. 0 = under a day. */
+export function waitingDays(
+  latestActivityAt: number,
+  nowSeconds: number,
+): number {
+  return Math.max(0, Math.floor((nowSeconds - latestActivityAt) / 86_400));
+}
+
+/** Local-day bucket used by the Needs Me headers. */
+export function isSameLocalDay(aSeconds: number, bSeconds: number): boolean {
+  return (
+    new Date(aSeconds * 1_000).toDateString() ===
+    new Date(bSeconds * 1_000).toDateString()
+  );
 }
 
 /**
@@ -111,6 +163,7 @@ export function projectAttention(
   nowSeconds: number,
 ): AttentionProjection {
   const needsMe: AttentionItem[] = [];
+  const headsUp: AttentionItem[] = [];
   const waiting: AttentionItem[] = [];
   const done: AttentionItem[] = [];
 
@@ -119,30 +172,39 @@ export function projectAttention(
       continue;
     }
     const entry = zoneState[item.conversationId];
+    let projected: AttentionItem;
     if (!entry) {
-      needsMe.push(toAttentionItem(item, "needsMe", undefined, false));
-      continue;
-    }
-    if (item.latestActivityAt > entry.changedAt) {
-      needsMe.push(toAttentionItem(item, "needsMe", entry, true));
-      continue;
-    }
-    if (entry.zone === "waiting") {
+      projected = toAttentionItem(item, "needsMe", undefined, false);
+    } else if (item.latestActivityAt > entry.changedAt) {
+      projected = toAttentionItem(item, "needsMe", entry, true);
+    } else if (entry.zone === "waiting") {
       waiting.push(toAttentionItem(item, "waiting", entry, false));
       continue;
+    } else {
+      if (nowSeconds - entry.changedAt <= DONE_RETENTION_SECONDS) {
+        done.push(toAttentionItem(item, "done", entry, false));
+      }
+      continue;
     }
-    if (nowSeconds - entry.changedAt <= DONE_RETENTION_SECONDS) {
-      done.push(toAttentionItem(item, "done", entry, false));
+    // Demotion tier: no detectable ask means it is not Needs Me.
+    if (projected.askType === "headsUp") {
+      headsUp.push(projected);
+    } else {
+      needsMe.push(projected);
     }
   }
 
+  // Staleness is the cost: the oldest open ask sorts to the top.
   needsMe.sort(
+    (a, b) => a.inboxItem.latestActivityAt - b.inboxItem.latestActivityAt,
+  );
+  headsUp.sort(
     (a, b) => b.inboxItem.latestActivityAt - a.inboxItem.latestActivityAt,
   );
   waiting.sort((a, b) => (b.zoneChangedAt ?? 0) - (a.zoneChangedAt ?? 0));
   done.sort((a, b) => (b.zoneChangedAt ?? 0) - (a.zoneChangedAt ?? 0));
 
-  return { needsMe, waiting, done };
+  return { needsMe, headsUp, waiting, done };
 }
 
 /**

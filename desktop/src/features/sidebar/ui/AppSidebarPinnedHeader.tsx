@@ -124,11 +124,11 @@ export function AppSidebarPrimaryMenu({
               data-testid="open-myzone-view"
               isActive={selectedView === "myzone"}
               onClick={onSelectMyZone}
-              tooltip="MyZone"
+              tooltip="Attention"
               type="button"
             >
               <Target className="h-4 w-4" />
-              <SidebarMenuLabel>MyZone</SidebarMenuLabel>
+              <SidebarMenuLabel>Attention</SidebarMenuLabel>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </FeatureGate>
