@@ -3,16 +3,24 @@ import test from "node:test";
 
 import { deriveQuickOptions } from "./quickOptions.ts";
 
-test("approval asks get the approve/reject pair", () => {
+const BACKUPS_ASK =
+  "Does the Backups list show any backup dated today, or is the newest one still the 30 July entry?";
+
+test("approve/reject pair only for declared approvals", () => {
   assert.deepEqual(
     deriveQuickOptions("approval", "Approve the staging deploy.", ""),
     ["Approve", "Reject"],
+  );
+  // Approval-sounding prose without the declared type never gets the pair.
+  assert.deepEqual(
+    deriveQuickOptions("review", "Approve the staging deploy.", ""),
+    [],
   );
 });
 
 test("polar questions get yes/no", () => {
   assert.deepEqual(
-    deriveQuickOptions("question", "Can you ship this today?", ""),
+    deriveQuickOptions("question", "Is the backup scheduled?", ""),
     ["Yes", "No"],
   );
   assert.deepEqual(
@@ -29,6 +37,20 @@ test("polar questions get yes/no", () => {
     deriveQuickOptions("review", "Could you look at the plan?", ""),
     [],
   );
+  // Polar questions must end with "?".
+  assert.deepEqual(
+    deriveQuickOptions("question", "Can you ship this today.", ""),
+    [],
+  );
+});
+
+test("regression: a which-of-two question never yields yes/no", () => {
+  const options = deriveQuickOptions("question", BACKUPS_ASK, "");
+  assert.notDeepEqual(options, ["Yes", "No"]);
+  assert.deepEqual(options, [
+    "the Backups list show any backup dated today",
+    "is the newest one still the 30 July entry",
+  ]);
 });
 
 test("A-or-B asks become their two alternatives", () => {
@@ -38,14 +60,14 @@ test("A-or-B asks become their two alternatives", () => {
       "Should we ship Tuesday or wait for QA?",
       "",
     ),
-    ["Should we ship Tuesday", "wait for QA"],
+    ["ship Tuesday", "wait for QA"],
   );
 });
 
 test("A-or-B outranks yes/no and approval", () => {
   assert.deepEqual(
     deriveQuickOptions("question", "Do we ship now or hold the release?", ""),
-    ["Do we ship now", "hold the release"],
+    ["ship now", "hold the release"],
   );
   assert.deepEqual(
     deriveQuickOptions("approval", "Approve the deploy or roll it back?", ""),
@@ -53,49 +75,39 @@ test("A-or-B outranks yes/no and approval", () => {
   );
 });
 
-test("A-or-B is skipped when either side is too long", () => {
+test("A-or-B requires exactly one or with two short sides", () => {
   const longSide =
     "keep the current onboarding flow exactly as designed in the last review cycle";
   assert.deepEqual(
     deriveQuickOptions("question", `Should we ship now or ${longSide}?`, ""),
-    ["Yes", "No"],
+    [],
+  );
+  assert.deepEqual(
+    deriveQuickOptions("question", "Tea or coffee or juice?", ""),
+    [],
   );
 });
 
-test("numbered lists become their item texts, capped at four", () => {
+test("regression: numbered lists are context, not answers", () => {
   const content = [
-    "Pick a launch plan:",
-    "1. **Ship now**",
+    "Decisions pending:",
+    "1. Ship now",
     "2. Wait for QA",
-    "3) Cancel the [launch](https://example.com)",
-    "4. Ship silently",
-    "5. Never ship",
+    "3. Cancel the launch",
   ].join("\n");
-  assert.deepEqual(deriveQuickOptions("headsUp", null, content), [
-    "Ship now",
-    "Wait for QA",
-    "Cancel the launch",
-    "Ship silently",
-  ]);
-});
-
-test("numbered list items are capped at 60 characters", () => {
-  const long = `1. ${"a".repeat(80)}\n2. short`;
-  const options = deriveQuickOptions("headsUp", null, long);
-  assert.equal(options.length, 2);
-  assert.equal(options[0].length, 60);
-});
-
-test("a single numbered line is not a list", () => {
-  assert.deepEqual(deriveQuickOptions("headsUp", null, "1. lonely item"), []);
+  assert.deepEqual(deriveQuickOptions("headsUp", null, content), []);
+  assert.deepEqual(
+    deriveQuickOptions("question", "Which option do we take?", content),
+    [],
+  );
 });
 
 test("no rule matching yields no options", () => {
   assert.deepEqual(
     deriveQuickOptions(
       "review",
-      "Please review the plan.",
-      "Please review the plan.",
+      "Please review your plan.",
+      "Please review your plan.",
     ),
     [],
   );

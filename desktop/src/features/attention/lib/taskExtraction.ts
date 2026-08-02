@@ -13,6 +13,12 @@ export type AskClassification = {
   type: AskType;
   /** The one-line ask headline; null only for headsUp. */
   ask: string | null;
+  /**
+   * Distinct qualifying ask sentences in the message (capped at
+   * MAX_ASK_COUNT). Cards with more than one never show a single ask as if
+   * it were the whole request.
+   */
+  askCount: number;
 };
 
 const MAX_TASK_LINE_LENGTH = 110;
@@ -64,6 +70,14 @@ function splitSentences(text: string): string[] {
 const ASK_PATTERN =
   /\b(please|can you|could you|would you|approve|review|confirm|decide|check|answer|unblock|need you|needs? your|waiting on you|your call|go ahead|say the word|let me know)\b/i;
 
+/** Asks must address the reader — narrative prose about work is not an ask. */
+const SECOND_PERSON = /\byou\b|\byour\b/i;
+
+/** "@lee can you…" — an ask addressed at a named third party. */
+const MENTION_TOKEN = /@[A-Za-z]/;
+
+export const MAX_ASK_COUNT = 9;
+
 function truncateTaskLine(sentence: string): string {
   if (sentence.length <= MAX_TASK_LINE_LENGTH) {
     return sentence;
@@ -73,33 +87,78 @@ function truncateTaskLine(sentence: string): string {
   return `${cut.slice(0, lastSpace > 60 ? lastSpace : MAX_TASK_LINE_LENGTH)}…`;
 }
 
-function findAskSentence(content: string): string | null {
+function contentSentences(content: string): string[] {
   const cleaned = stripMessageNoise(content);
-  if (!cleaned) {
-    return null;
-  }
-  const sentences = splitSentences(cleaned);
+  return cleaned ? splitSentences(cleaned) : [];
+}
+
+function findAskSentenceIn(sentences: string[]): string | null {
   if (sentences.length === 0) {
     return null;
   }
 
-  const readerQuestion = sentences.find(
-    (sentence) => sentence.endsWith("?") && /\byou\b|\byour\b/i.test(sentence),
+  const questions = sentences.filter((sentence) => sentence.endsWith("?"));
+  const readerQuestion = questions.find((sentence) =>
+    SECOND_PERSON.test(sentence),
   );
   if (readerQuestion) {
     return readerQuestion;
   }
 
-  const anyQuestion = sentences.find((sentence) => sentence.endsWith("?"));
+  // Questions addressed at a named third party ("@lee can you…") are
+  // deprioritised: only use them when no plainly-addressed question exists.
+  const nonMentionQuestions = questions.filter(
+    (sentence) => !MENTION_TOKEN.test(sentence),
+  );
+  const anyQuestion =
+    nonMentionQuestions.length > 0 ? nonMentionQuestions[0] : questions[0];
   if (anyQuestion) {
     return anyQuestion;
   }
 
-  return sentences.find((sentence) => ASK_PATTERN.test(sentence)) ?? null;
+  // Imperative asks only qualify when they address the reader — otherwise
+  // narrative status prose ("we are blocked…") reads as an ask.
+  return (
+    sentences.find(
+      (sentence) => ASK_PATTERN.test(sentence) && SECOND_PERSON.test(sentence),
+    ) ?? null
+  );
+}
+
+function findAskSentence(content: string): string | null {
+  return findAskSentenceIn(contentSentences(content));
+}
+
+/**
+ * Distinct qualifying ask sentences for the multi-ask safety rule: reader
+ * questions (with @-addressed ones deprioritised) plus reader-addressed
+ * imperative asks. Mirrors the findAskSentenceIn filters.
+ */
+function qualifyingAskSentences(sentences: string[]): string[] {
+  const readerQuestions = sentences.filter(
+    (sentence) => sentence.endsWith("?") && SECOND_PERSON.test(sentence),
+  );
+  const nonMentionReaderQuestions = readerQuestions.filter(
+    (sentence) => !MENTION_TOKEN.test(sentence),
+  );
+  const countedQuestions =
+    nonMentionReaderQuestions.length > 0
+      ? nonMentionReaderQuestions
+      : readerQuestions;
+  const imperativeAsks = sentences.filter(
+    (sentence) =>
+      !sentence.endsWith("?") &&
+      ASK_PATTERN.test(sentence) &&
+      SECOND_PERSON.test(sentence),
+  );
+  return [...new Set([...countedQuestions, ...imperativeAsks])].slice(
+    0,
+    MAX_ASK_COUNT,
+  );
 }
 
 const APPROVAL_PATTERN =
-  /\b(approve|approval|sign[- ]?off|authorise|authorize|green ?light|gated on you|go ahead)\b/i;
+  /\b(approve|approval|sign[- ]?off|authorise|authorize|green ?light|gated on you)\b/i;
 const DECISION_PATTERN =
   /\b(decide|decision|choose|choice|your call|pick (?:one|between)|option [ab])\b/i;
 const BLOCKED_PATTERN =
@@ -123,15 +182,20 @@ function classifyAskSentence(sentence: string): AskType {
  */
 export function classifyAsk(content: string): AskClassification {
   if (isConfigNoise(content)) {
-    return { type: "headsUp", ask: null };
+    return { type: "headsUp", ask: null, askCount: 0 };
   }
-  const sentence = findAskSentence(content);
+  const sentences = contentSentences(content);
+  const sentence = findAskSentenceIn(sentences);
   if (!sentence) {
-    return { type: "headsUp", ask: null };
+    return { type: "headsUp", ask: null, askCount: 0 };
   }
+  // The headline sentence itself may be a plain (non-reader) question that
+  // the qualifying set excludes, so an ask never reports a count of zero.
+  const askCount = Math.max(1, qualifyingAskSentences(sentences).length);
   return {
     type: classifyAskSentence(sentence),
     ask: truncateTaskLine(sentence),
+    askCount,
   };
 }
 

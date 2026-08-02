@@ -27,6 +27,8 @@ export type AttentionItem = {
   /** The one-line ask headline; null for headsUp items. */
   ask: string | null;
   askType: AskType;
+  /** Distinct qualifying asks in the message; >1 renders a multi-ask headline. */
+  askCount: number;
   zone: AttentionZone;
   zoneChangedAt: number | null;
   /**
@@ -92,23 +94,30 @@ export function attentionThreadRootId(item: InboxItem): string | null {
 function classifyInboxItem(item: InboxItem): {
   ask: string | null;
   askType: AskType;
+  askCount: number;
 } {
+  const classification = classifyAsk(item.item.content);
   // Kind-level needs_action events carry their type; prose is classified.
   if (item.item.kind === KIND_WORKFLOW_APPROVAL_REQUESTED) {
     return {
-      ask: classifyAsk(item.item.content).ask ?? item.preview,
+      ask: classification.ask ?? item.preview,
       askType: "approval",
+      askCount: Math.max(1, classification.askCount),
     };
   }
-  const classification = classifyAsk(item.item.content);
   if (item.item.kind === KIND_STREAM_REMINDER) {
     return {
       ask: classification.ask ?? item.preview,
       askType:
         classification.type === "headsUp" ? "review" : classification.type,
+      askCount: Math.max(1, classification.askCount),
     };
   }
-  return { ask: classification.ask, askType: classification.type };
+  return {
+    ask: classification.ask,
+    askType: classification.type,
+    askCount: classification.askCount,
+  };
 }
 
 function toAttentionItem(
@@ -117,13 +126,14 @@ function toAttentionItem(
   entry: ZoneStateEntry | undefined,
   reactivated: boolean,
 ): AttentionItem {
-  const { ask, askType } = classifyInboxItem(item);
+  const { ask, askType, askCount } = classifyInboxItem(item);
   return {
     id: item.conversationId,
     inboxItem: item,
     reason: attentionReason(item),
     ask,
     askType,
+    askCount,
     zone,
     zoneChangedAt: entry?.changedAt ?? null,
     reactivated,

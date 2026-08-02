@@ -25,9 +25,9 @@ type MockWindow = Window & {
 
 /**
  * Seed the mock feed with the injected items the redesigned view needs on
- * top of the built-in Tyler feed (a Review mention + a 40007 reminder):
- * a 46010 approval that has been waiting three days (overdue section) and
- * an ask-less mention (To note section).
+ * top of the built-in feed (a mention with no reader-addressed ask + a
+ * 40007 reminder): a 46010 approval that has been waiting three days
+ * (overdue section) and an ask-less FYI mention (To note section).
  */
 async function seedAttentionFeed(page: import("@playwright/test").Page) {
   await page.waitForFunction(
@@ -85,17 +85,20 @@ test.describe("attention views", () => {
     const view = page.getByTestId("attention-view");
     await expect(view).toBeVisible();
 
-    // 3 real asks (approval, mention, reminder) + 1 heads-up to note.
+    // 2 real asks (approval, reminder) + 2 to note: the seeded FYI mention
+    // and the built-in "Please review the release checklist." mention, which
+    // does not address the reader (no second person) and so no longer counts
+    // as a Needs Me ask under the stricter extraction rules.
     const cards = page.locator('article[data-testid^="attention-card-"]');
     await expect(cards).toHaveCount(4);
 
     // Split Needs Me count: real asks and to-note are counted separately.
     const needsTab = page.getByTestId("attention-tab-needsMe");
-    await expect(needsTab).toContainText("3 need you");
-    await expect(needsTab).toContainText("1 to note");
+    await expect(needsTab).toContainText("2 need you");
+    await expect(needsTab).toContainText("2 to note");
 
-    // Sections: the 3-day-old approval is overdue, the rest is today,
-    // the ask-less mention sits under To note.
+    // Sections: the 3-day-old approval is overdue, the reminder is today,
+    // the ask-less mentions sit under To note.
     await expect(page.getByTestId("attention-section-overdue")).toBeVisible();
     await expect(page.getByTestId("attention-section-today")).toBeVisible();
     await expect(page.getByTestId("attention-section-note")).toBeVisible();
@@ -107,7 +110,7 @@ test.describe("attention views", () => {
     const badges = page.getByTestId("attention-card-badge");
     await expect(badges.filter({ hasText: "Approval" })).toHaveCount(1);
     await expect(badges.filter({ hasText: "Review" }).first()).toBeVisible();
-    await expect(badges.filter({ hasText: "Heads up" })).toHaveCount(1);
+    await expect(badges.filter({ hasText: "Heads up" })).toHaveCount(2);
 
     // The headline is the ask, not the sender.
     const firstAsk = cards.first().getByTestId("attention-card-ask");
@@ -167,14 +170,14 @@ test.describe("attention views", () => {
 
     // Done: the zone change applies immediately, the Undo toast appears,
     // and after the 5s undo window the reply posts without error.
-    const mentionCard = page.locator(
+    const reminderCard = page.locator(
       'article[data-testid^="attention-card-"]',
       {
-        hasText: "review the release checklist",
+        hasText: "update the launch plan",
       },
     );
-    await mentionCard.hover();
-    await mentionCard.getByTestId("attention-action-done").click();
+    await reminderCard.hover();
+    await reminderCard.getByTestId("attention-action-done").click();
     await expect(cards).toHaveCount(3);
     await expect(
       page.getByText("Marked done — reply posts in 5s"),
@@ -187,7 +190,7 @@ test.describe("attention views", () => {
     await page.getByTestId("attention-tab-done").click();
     await expect(
       page.locator('article[data-testid^="attention-card-"]', {
-        hasText: "review the release checklist",
+        hasText: "update the launch plan",
       }),
     ).toBeVisible();
 

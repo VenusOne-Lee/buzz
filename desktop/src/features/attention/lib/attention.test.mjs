@@ -10,7 +10,7 @@ import {
 } from "./attention.ts";
 
 const NOW = 1_700_000_000;
-const ASK_CONTENT = "Please review the plan.";
+const ASK_CONTENT = "Can you review the plan?";
 
 function makeInboxItem(overrides = {}) {
   const {
@@ -91,6 +91,7 @@ test("ask-bearing items land in Needs Me, ask-less mentions demote to Heads up",
   assert.equal(projection.needsMe[0].reactivated, false);
   assert.equal(projection.needsMe[0].askType, "review");
   assert.equal(projection.needsMe[0].ask, ASK_CONTENT);
+  assert.equal(projection.needsMe[0].askCount, 1);
 
   assert.equal(projection.headsUp.length, 1);
   assert.equal(projection.headsUp[0].id, "conv-hi");
@@ -99,6 +100,20 @@ test("ask-bearing items land in Needs Me, ask-less mentions demote to Heads up",
 
   assert.equal(projection.waiting.length, 0);
   assert.equal(projection.done.length, 0);
+});
+
+test("multi-ask messages carry askCount through the projection", () => {
+  const projection = projectAttention(
+    [
+      makeInboxItem({
+        content: "Can you approve the budget? Could you review the deck?",
+      }),
+    ],
+    {},
+    NOW,
+  );
+  assert.equal(projection.needsMe.length, 1);
+  assert.equal(projection.needsMe[0].askCount, 2);
 });
 
 test("config-nudge noise demotes to Heads up", () => {

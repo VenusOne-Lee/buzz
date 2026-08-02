@@ -1,33 +1,36 @@
 import type { AskType } from "@/features/attention/lib/taskExtraction";
 
 const MAX_OPTION_LENGTH = 60;
-const MAX_OPTIONS = 4;
 
 /** Auxiliary-verb leads that mark a polar (yes/no) question. */
 const YES_NO_LEAD =
   /^(?:do|does|is|are|can|could|should|will|would|has|have|did)\b/i;
 
-const NUMBERED_LIST_ITEM = /^\s*\d+[.)]\s+(.*)$/;
+/** Leading auxiliary (plus a trailing pronoun) that can be trivially
+ * stripped from an A-or-B alternative: "Should we ship Tuesday" → "ship
+ * Tuesday". When stripping is not trivially possible the side is used
+ * as-is. */
+const LEADING_AUXILIARY =
+  /^(?:do|does|is|are|can|could|should|will|would|has|have|did)\s+(?:we\s+|i\s+|you\s+|they\s+)?/i;
 
-/** Reduce a candidate option to plain text: links keep labels, markers drop. */
-function stripOptionMarkdown(text: string): string {
+const OR_WORD = /\bor\b/gi;
+
+function cleanAlternative(text: string): string {
   return text
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/(\*\*|__|~~|\*|_|`)/g, "")
+    .trim()
+    .replace(/[,;]+$/, "")
     .trim();
 }
 
-function capOption(text: string): string {
-  if (text.length <= MAX_OPTION_LENGTH) {
-    return text;
-  }
-  return text.slice(0, MAX_OPTION_LENGTH).trimEnd();
+function stripLeadingAuxiliary(text: string): string {
+  const stripped = text.replace(LEADING_AUXILIARY, "").trim();
+  return stripped.length > 0 ? stripped : text;
 }
 
 /**
- * "A or B?" asks become their two alternatives. Both sides must be short
- * enough to work as buttons — a long side means the "or" was mid-sentence
- * prose, not a real either/or choice.
+ * "A or B?" asks become their two alternatives — but only with exactly one
+ * "or" and two short sides, so mid-sentence prose "or"s never turn into
+ * answer buttons.
  */
 function eitherOrOptions(ask: string | null): string[] | null {
   if (!ask) {
@@ -38,58 +41,61 @@ function eitherOrOptions(ask: string | null): string[] | null {
     return null;
   }
   const body = trimmed.replace(/\?+$/, "");
-  const splitAt = body.indexOf(" or ");
-  if (splitAt === -1) {
+  const orMatches = [...body.matchAll(OR_WORD)];
+  if (orMatches.length !== 1) {
     return null;
   }
-  const left = body.slice(0, splitAt).trim();
-  const right = body.slice(splitAt + " or ".length).trim();
+  const at = orMatches[0].index ?? -1;
+  if (at < 0) {
+    return null;
+  }
+  const left = cleanAlternative(body.slice(0, at));
+  const right = cleanAlternative(body.slice(at + orMatches[0][0].length));
   if (!left || !right) {
     return null;
   }
   if (left.length > MAX_OPTION_LENGTH || right.length > MAX_OPTION_LENGTH) {
     return null;
   }
-  return [left, right];
-}
-
-/** Numbered lists in the message body become their first four item texts. */
-function numberedListOptions(content: string): string[] {
-  const items: string[] = [];
-  for (const line of content.split("\n")) {
-    const match = line.match(NUMBERED_LIST_ITEM);
-    if (!match) {
-      continue;
-    }
-    const text = stripOptionMarkdown(match[1]);
-    if (!text) {
-      continue;
-    }
-    items.push(capOption(text));
-  }
-  return items.length >= 2 ? items.slice(0, MAX_OPTIONS) : [];
+  return [stripLeadingAuxiliary(left), right];
 }
 
 /**
- * Derive one-click reply options for an attention card. Precedence (a
- * declared tier-1 option tag would sit above all of these when it lands):
- * A-or-B alternatives > polar yes/no > approval pair > numbered list.
- * Returns [] when the ask has no obvious short answers.
+ * Polar (yes/no) questions: derived questions that end in "?", start with
+ * an auxiliary verb, and contain no "or". A which-of-two question ("Does X
+ * show A, or is it B?") must never be answerable with Yes/No.
+ */
+function isPolarQuestion(ask: string): boolean {
+  const trimmed = ask.trim();
+  return (
+    trimmed.endsWith("?") &&
+    YES_NO_LEAD.test(trimmed) &&
+    !/\bor\b/i.test(trimmed)
+  );
+}
+
+/**
+ * Derive one-click reply options for an attention card. Confidence-first:
+ * a wrong quick answer is worse than no quick answer, so only rules that
+ * cannot misfire remain — A-or-B alternatives > polar yes/no (derived
+ * questions only) > the approval pair (declared approvals only). Anything
+ * else returns [] and the card shows the reply box alone. (A declared
+ * tier-1 option tag would sit above all of these when it lands.)
  */
 export function deriveQuickOptions(
   askType: AskType,
   ask: string | null,
-  content: string,
+  _content: string,
 ): string[] {
   const alternatives = eitherOrOptions(ask);
   if (alternatives) {
     return alternatives;
   }
-  if (askType === "question" && ask && YES_NO_LEAD.test(ask.trim())) {
+  if (askType === "question" && ask && isPolarQuestion(ask)) {
     return ["Yes", "No"];
   }
   if (askType === "approval") {
     return ["Approve", "Reject"];
   }
-  return numberedListOptions(content);
+  return [];
 }

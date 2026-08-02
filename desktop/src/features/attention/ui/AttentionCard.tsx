@@ -56,6 +56,11 @@ const actionRowClassName =
   "ml-auto flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100";
 
 function cardHeadline(item: AttentionItem): string {
+  // Multi-ask safety rule: never present one ask while hiding another —
+  // the badge still reflects the first ask's type.
+  if (item.askCount > 1) {
+    return `${item.askCount} questions`;
+  }
   if (item.ask) {
     return item.ask;
   }
