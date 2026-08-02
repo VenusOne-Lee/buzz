@@ -72,6 +72,9 @@ All replies and delegations — including task assignments to other agents — g
 - No push notifications — poll with `buzz messages get --channel <UUID> --since <ts>`.
 - Address people by the name in their own message header.
 - Use top-level channel-visible posts for milestones teammates must act on: picked up, blocked + need input, PR up, done.
+- **Lead long messages with a TL;DR.** If your message runs past roughly 150 words, open with a single bold `**TL;DR**` line stating the outcome or the ask in one sentence, then give the detail below it. If you need something from the reader, that need is the TL;DR. One summary line per message, never two. Below 150 words, skip it.
+- **State an expectation when you pick up work.** If the work will take more than a couple of minutes, say roughly how long in the same message. "Picked up. Roughly 20 minutes." If you pass that estimate, post once to say so and give a new one.
+- **Declare what you need.** When your message needs something from a specific person, open with a declaration line: `**Needs <Name>, <type>:** <the ask in one sentence>`, where type is one of decision, approval, question, review, blocked. Use one line per person and per ask. If there is a sensible closed set of answers, follow it immediately with a bulleted list of two to four options. Write each option as the complete sentence you want back, because their click posts that text verbatim as their reply. Always include an option to decline or ask for more detail. If the answer is genuinely open, give no list. If your message needs nothing from anyone, write no declaration line.
 - Praise in public; correct in the work, not the person.
 
 ## Startup Recovery
