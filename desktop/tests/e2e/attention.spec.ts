@@ -95,6 +95,19 @@ async function seedAttentionFeed(page: import("@playwright/test").Page) {
         pubkey: agentPubkey,
         tags: [["p", viewerPubkey]],
       });
+      // Declared blocked ask: the one type whose primary action is Done.
+      push?.({
+        category: "mention",
+        channel_id: channelId,
+        channel_name: "agents",
+        content:
+          "**Needs Tyler, blocked:** I need the staging credentials before I can deploy.",
+        created_at: Math.floor(Date.now() / 1_000) - 30,
+        id: "mock-feed-attention-declared-blocked",
+        kind: 9,
+        pubkey: agentPubkey,
+        tags: [["p", viewerPubkey]],
+      });
     },
     {
       agentPubkey: AGENT_PUBKEY,
@@ -122,14 +135,15 @@ test.describe("attention views", () => {
     const view = page.getByTestId("attention-view");
     await expect(view).toBeVisible();
 
-    // 5 real asks (approval, tyler mention, tyler reminder, declared
-    // decision, declared multi) + 1 to note (the seeded FYI mention).
+    // 6 real asks (approval, tyler mention, tyler reminder, declared
+    // decision, declared multi, declared blocked) + 1 to note (the seeded
+    // FYI mention).
     const cards = page.locator('article[data-testid^="attention-card-"]');
-    await expect(cards).toHaveCount(6);
+    await expect(cards).toHaveCount(7);
 
     // Split Needs Me count: real asks and to-note are counted separately.
     const needsTab = page.getByTestId("attention-tab-needsMe");
-    await expect(needsTab).toContainText("5 need you");
+    await expect(needsTab).toContainText("6 need you");
     await expect(needsTab).toContainText("1 to note");
 
     // Sections: the 3-day-old approval is overdue, the reminder is today,
@@ -148,6 +162,7 @@ test.describe("attention views", () => {
     await expect(badges.filter({ hasText: "Decision" })).toHaveCount(1);
     await expect(badges.filter({ hasText: "Review" }).first()).toBeVisible();
     await expect(badges.filter({ hasText: "Heads up" })).toHaveCount(1);
+    await expect(badges.filter({ hasText: "Blocked" })).toHaveCount(1);
 
     // Multi-declaration message headlines the ask count, never one ask.
     await expect(
@@ -174,13 +189,18 @@ test.describe("attention views", () => {
     const expanded = page.getByTestId("attention-card-expanded");
     await expect(expanded).toBeVisible();
 
-    // Full message, quick-select options (approval pair), and a reply box.
+    // Full message, quick-select options (approval pair + the way out),
+    // and a reply box. Options are scoped to the card: collapsed cards
+    // now show their own option rows too.
     await expect(expanded).toContainText(
       "Release workflow paused: approve the desktop deploy to staging?",
     );
-    const quickOptions = page.getByTestId("attention-quick-option");
-    await expect(quickOptions).toHaveCount(2);
+    const quickOptions = cards.first().getByTestId("attention-quick-option");
+    await expect(quickOptions).toHaveCount(3);
     await expect(quickOptions.first()).toHaveText("Approve");
+    await expect(quickOptions.last()).toHaveText(
+      "Not enough detail yet, tell me more",
+    );
     await expect(page.getByTestId("attention-reply-input")).toBeFocused();
     await expect(page.getByTestId("attention-action-reply")).toBeDisabled();
 
@@ -198,32 +218,41 @@ test.describe("attention views", () => {
     await page.keyboard.press("e");
     await expect(expanded).not.toBeVisible();
 
-    // Declared options: the decision card renders its three authored
-    // options, and clicking one flows through the reply queue (posts the
-    // option text verbatim after the undo window).
+    // Declared options are visible on the COLLAPSED card (one click clears
+    // the row without an expand), and clicking one flows through the reply
+    // queue (posts the option text verbatim after the undo window).
     const decisionCard = page.locator(
       'article[data-testid^="attention-card-"]',
       { hasText: "Ship the attention release now" },
     );
-    await decisionCard.getByTestId("attention-card-ask").click();
     const declaredOptions = decisionCard.getByTestId("attention-quick-option");
     await expect(declaredOptions).toHaveCount(3);
     await expect(declaredOptions.first()).toHaveText("Ship it now.");
     await declaredOptions.first().click();
-    await expect(cards).toHaveCount(5);
+    await expect(cards).toHaveCount(6);
     await expect(page.getByText("Reply queued — posts in 5s")).toBeVisible();
     await page.getByRole("button", { name: "Undo" }).click();
-    await expect(cards).toHaveCount(6);
+    await expect(cards).toHaveCount(7);
 
-    // Multi-ask expanded view answers through per-ask sub-items.
+    // Multi-ask: the collapsed card lists its sub-asks (never just a
+    // count), and the expanded view answers through per-ask sub-items.
+    // The optionless Review sub-ask gets its default pair (fixture 4).
     const multiCard = page.locator('article[data-testid^="attention-card-"]', {
       hasText: "2 asks",
     });
+    await expect(
+      multiCard.getByTestId("attention-collapsed-subasks"),
+    ).toContainText("Did the overnight backup complete?");
     await multiCard.getByTestId("attention-card-ask").click();
     await expect(multiCard.getByTestId("attention-subitem")).toHaveCount(2);
     await expect(
       multiCard.getByTestId("attention-subitems-progress"),
     ).toHaveText("0 of 2 answered");
+    await expect(
+      multiCard.getByTestId("attention-subitem-option").filter({
+        hasText: "Looks good",
+      }),
+    ).toBeVisible();
     await multiCard.getByTestId("attention-card-ask").click();
 
     // Noted on a To note item is LOCAL-ONLY: the card leaves immediately,
@@ -233,29 +262,44 @@ test.describe("attention views", () => {
     });
     await notedCard.hover();
     await notedCard.getByTestId("attention-action-noted").click();
-    await expect(cards).toHaveCount(5);
+    await expect(cards).toHaveCount(6);
     await expect(page.getByText("Noted locally")).toBeVisible();
     await expect(page.getByText("Noted — reply posts in 5s")).toHaveCount(0);
     const undoButton = page.getByRole("button", { name: "Undo" });
     await expect(undoButton).toBeVisible();
     await undoButton.click();
-    await expect(cards).toHaveCount(6);
+    await expect(cards).toHaveCount(7);
 
     // Note all clears the whole To note strip locally; Undo restores it.
     await expect(page.getByTestId("attention-section-note")).toBeVisible();
     await page.getByTestId("attention-note-all").click();
     await expect(page.getByTestId("attention-section-note")).not.toBeVisible();
-    await expect(cards).toHaveCount(5);
+    await expect(cards).toHaveCount(6);
     await expect(page.getByText("Noted 1 item locally")).toBeVisible();
     await page
       .locator("li", { hasText: "Noted 1 item locally" })
       .getByRole("button", { name: "Undo" })
       .click();
     await expect(page.getByTestId("attention-section-note")).toBeVisible();
-    await expect(cards).toHaveCount(6);
+    await expect(cards).toHaveCount(7);
 
-    // Done: the zone change applies immediately, the Undo toast appears,
-    // and after the 5s undo window the reply posts without error.
+    // Locked action matrix: Done only where it means something. The
+    // Blocked card has Done as primary and no overflow; the reminder
+    // (Review) card has no Done and offers Handled elsewhere instead.
+    const blockedCard = page.locator(
+      'article[data-testid^="attention-card-"]',
+      { hasText: "staging credentials" },
+    );
+    await blockedCard.hover();
+    await expect(
+      blockedCard.getByTestId("attention-action-done"),
+    ).toBeVisible();
+    await expect(
+      blockedCard.getByTestId("attention-action-overflow"),
+    ).toHaveCount(0);
+
+    // Handled elsewhere: held like every action, publishes the shared
+    // honest line exactly once after the 5s undo window.
     const reminderCard = page.locator(
       'article[data-testid^="attention-card-"]',
       {
@@ -263,13 +307,19 @@ test.describe("attention views", () => {
       },
     );
     await reminderCard.hover();
-    await reminderCard.getByTestId("attention-action-done").click();
-    await expect(cards).toHaveCount(5);
+    await expect(reminderCard.getByTestId("attention-action-done")).toHaveCount(
+      0,
+    );
+    await reminderCard.getByTestId("attention-action-overflow").click();
+    await reminderCard
+      .getByTestId("attention-action-handled-elsewhere")
+      .click();
+    await expect(cards).toHaveCount(6);
     await expect(
-      page.getByText("Marked done — reply posts in 5s"),
+      page.getByText("Handled elsewhere — reply posts in 5s"),
     ).toBeVisible();
     await page.waitForTimeout(5_500);
-    await expect(cards).toHaveCount(5);
+    await expect(cards).toHaveCount(6);
     await expect(
       page.getByText("Could not post your reply", { exact: false }),
     ).not.toBeVisible();

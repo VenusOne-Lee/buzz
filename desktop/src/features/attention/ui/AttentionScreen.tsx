@@ -9,6 +9,7 @@ import {
   actionPublishes,
   type AttentionItem,
   attentionThreadRootId,
+  HANDLED_ELSEWHERE_REPLY,
   projectAttention,
 } from "@/features/attention/lib/attention";
 import type { AttentionCardAction } from "@/features/attention/ui/AttentionCard";
@@ -23,7 +24,7 @@ import {
   RELAY_UNREACHABLE_MESSAGE,
 } from "@/shared/lib/relayError";
 
-/** Canned prose for the three park actions. Replies stay human-readable. */
+/** Canned prose for the park actions. Replies stay human-readable. */
 const ACTION_CONFIG: Record<
   AttentionCardAction,
   { reply: string; toast: string; zone: "done" | "waiting" }
@@ -31,6 +32,11 @@ const ACTION_CONFIG: Record<
   done: {
     reply: "Done. The manual step you needed from me is complete.",
     toast: "Marked done — reply posts in 5s",
+    zone: "done",
+  },
+  handledElsewhere: {
+    reply: HANDLED_ELSEWHERE_REPLY,
+    toast: "Handled elsewhere — reply posts in 5s",
     zone: "done",
   },
   noted: {

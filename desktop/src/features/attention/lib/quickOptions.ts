@@ -1,5 +1,13 @@
 import type { AskType } from "@/features/attention/lib/taskExtraction";
 
+/**
+ * The way out (declared-options rule 2): every option set we author
+ * ourselves carries an option that declines to answer, so a bad set
+ * cannot railroad a wrong one-click answer. Wording is the spec's own
+ * example; the click posts it verbatim.
+ */
+export const MORE_DETAIL_OPTION = "Not enough detail yet, tell me more";
+
 const MAX_OPTION_LENGTH = 60;
 
 /** Auxiliary-verb leads that mark a polar (yes/no) question. */
@@ -75,12 +83,31 @@ function isPolarQuestion(ask: string): boolean {
 }
 
 /**
- * Derive one-click reply options for an attention card. Confidence-first:
- * a wrong quick answer is worse than no quick answer, so only rules that
- * cannot misfire remain — A-or-B alternatives > polar yes/no (derived
- * questions only) > the approval pair (declared approvals only). Anything
- * else returns [] and the card shows the reply box alone. (A declared
- * tier-1 option tag would sit above all of these when it lands.)
+ * Closed defaults for a declared ask whose author supplied no options
+ * (declared-options spec, "Options per response type"). Decision and
+ * Question have no safe default — the author must supply the answers,
+ * or the free-text path is the way in.
+ */
+export function defaultDeclaredOptions(type: AskType): string[] {
+  switch (type) {
+    case "approval":
+      return ["Approve", "Reject", MORE_DETAIL_OPTION];
+    case "review":
+      return ["Looks good", "Changes needed", MORE_DETAIL_OPTION];
+    case "blocked":
+      return ["I have done it", "I cannot do it", MORE_DETAIL_OPTION];
+    default:
+      return [];
+  }
+}
+
+/**
+ * Derive one-click reply options for an attention card, per the locked
+ * action matrix: A-or-B alternatives > polar yes/no (derived questions
+ * only) > the type pairs (Approval and Review). Anything else returns []
+ * and the card shows the reply box alone. Blocked is deliberately absent:
+ * its primary action is Done, not an option set. Every derived set ends
+ * with the way-out option (rule 2 — we are the author here).
  */
 export function deriveQuickOptions(
   askType: AskType,
@@ -89,13 +116,13 @@ export function deriveQuickOptions(
 ): string[] {
   const alternatives = eitherOrOptions(ask);
   if (alternatives) {
-    return alternatives;
+    return [...alternatives, MORE_DETAIL_OPTION];
   }
   if (askType === "question" && ask && isPolarQuestion(ask)) {
-    return ["Yes", "No"];
+    return ["Yes", "No", MORE_DETAIL_OPTION];
   }
-  if (askType === "approval") {
-    return ["Approve", "Reject"];
+  if (askType === "approval" || askType === "review") {
+    return defaultDeclaredOptions(askType);
   }
   return [];
 }

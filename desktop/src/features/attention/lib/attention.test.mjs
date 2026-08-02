@@ -5,8 +5,11 @@ import {
   actionPublishes,
   attentionReason,
   DONE_RETENTION_SECONDS,
+  HANDLED_ELSEWHERE_REPLY,
   isAttentionWorthy,
+  offersHandledElsewhere,
   persistableZoneState,
+  primaryGenericAction,
   projectAttention,
   pruneZoneState,
 } from "./attention.ts";
@@ -506,4 +509,25 @@ test("an exact-entry restore keeps a reactivated card in Needs Me, a re-marked o
   );
   assert.equal(remarked.needsMe.length, 0);
   assert.equal(remarked.waiting.length, 1);
+});
+
+test("locked action matrix: generic primaries and the Handled-elsewhere offer", () => {
+  assert.equal(primaryGenericAction("blocked"), "done");
+  assert.equal(primaryGenericAction("headsUp"), "noted");
+  for (const type of ["approval", "decision", "question", "review"]) {
+    assert.equal(primaryGenericAction(type), null, `${type} primary`);
+    assert.equal(offersHandledElsewhere(type), true, `${type} overflow`);
+  }
+  assert.equal(offersHandledElsewhere("blocked"), false);
+  assert.equal(offersHandledElsewhere("headsUp"), false);
+});
+
+test("Handled elsewhere publishes the frozen line and counts as publishing", () => {
+  assert.equal(
+    HANDLED_ELSEWHERE_REPLY,
+    "Handled outside this thread, no answer coming here. If you are still blocked, say so and I will pick it up.",
+  );
+  for (const type of ["approval", "decision", "question", "review"]) {
+    assert.equal(actionPublishes(type, "handledElsewhere"), true, type);
+  }
 });

@@ -4,20 +4,32 @@ import {
   ChevronDown,
   ChevronUp,
   Hourglass,
+  MoreHorizontal,
   RotateCcw,
 } from "lucide-react";
 import * as React from "react";
 
 import type { AttentionItem } from "@/features/attention/lib/attention";
-import { waitingDays } from "@/features/attention/lib/attention";
-import { deriveQuickOptions } from "@/features/attention/lib/quickOptions";
+import {
+  offersHandledElsewhere,
+  primaryGenericAction,
+  waitingDays,
+} from "@/features/attention/lib/attention";
+import {
+  defaultDeclaredOptions,
+  deriveQuickOptions,
+} from "@/features/attention/lib/quickOptions";
 import { extractTaskLine } from "@/features/attention/lib/taskExtraction";
 import type { AskType } from "@/features/attention/lib/taskExtraction";
 import { cn } from "@/shared/lib/cn";
 import { Button } from "@/shared/ui/button";
 import { Markdown } from "@/shared/ui/markdown";
 
-export type AttentionCardAction = "done" | "noted" | "waiting";
+export type AttentionCardAction =
+  | "done"
+  | "noted"
+  | "waiting"
+  | "handledElsewhere";
 
 type AttentionCardProps = {
   expanded: boolean;
@@ -114,6 +126,7 @@ export function AttentionCard({
 
   const [replyText, setReplyText] = React.useState("");
   const [badgeMenuOpen, setBadgeMenuOpen] = React.useState(false);
+  const [overflowOpen, setOverflowOpen] = React.useState(false);
   // Per-sub-ask local answers, keyed by declared-ask index.
   const [subAnswers, setSubAnswers] = React.useState<Record<number, string>>(
     {},
@@ -130,6 +143,11 @@ export function AttentionCard({
     }
     return deriveQuickOptions(item.askType, item.ask, content);
   }, [isMultiAsk, declaredAsks, item.askType, item.ask, content]);
+
+  // Locked action matrix: Done only on Blocked, Noted only on Heads up,
+  // Handled elsewhere in the overflow everywhere else actionable.
+  const genericPrimary = primaryGenericAction(item.askType);
+  const hasOverflow = offersHandledElsewhere(item.askType);
 
   const answeredCount = declaredAsks.filter(
     (_ask, index) => (subAnswers[index] ?? "").trim().length > 0,
@@ -264,17 +282,50 @@ export function AttentionCard({
                   <Hourglass />
                   Waiting
                 </Button>
-                <Button
-                  data-testid="attention-action-done"
-                  disabled={!canPost}
-                  onClick={() => onAction(item, "done")}
-                  size="xs"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Check />
-                  Done
-                </Button>
+                {genericPrimary === "done" ? (
+                  <Button
+                    data-testid="attention-action-done"
+                    disabled={!canPost}
+                    onClick={() => onAction(item, "done")}
+                    size="xs"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Check />
+                    Done
+                  </Button>
+                ) : null}
+                {hasOverflow ? (
+                  <div className="relative">
+                    <Button
+                      aria-expanded={overflowOpen}
+                      aria-label="More actions"
+                      data-testid="attention-action-overflow"
+                      onClick={() => setOverflowOpen((open) => !open)}
+                      size="xs"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <MoreHorizontal />
+                    </Button>
+                    {overflowOpen ? (
+                      <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-lg border border-border bg-background p-1 shadow-md">
+                        <button
+                          className="block w-full rounded-md px-2 py-1 text-left text-2xs text-muted-foreground transition-colors hover:bg-muted"
+                          data-testid="attention-action-handled-elsewhere"
+                          disabled={!canPost}
+                          onClick={() => {
+                            setOverflowOpen(false);
+                            onAction(item, "handledElsewhere");
+                          }}
+                          type="button"
+                        >
+                          Handled elsewhere
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </>
             ) : null}
             {item.zone === "needsMe" && isHeadsUp ? (
@@ -356,71 +407,116 @@ export function AttentionCard({
             ) : null}
           </div>
         </div>
+        {/* Options are the point of the card: visible collapsed, one click
+            clears the row without an expand. */}
+        {item.zone === "needsMe" && !isHeadsUp && !expanded ? (
+          isMultiAsk ? (
+            <div
+              className="mt-1.5 flex flex-col gap-0.5"
+              data-testid="attention-collapsed-subasks"
+            >
+              {declaredAsks.map((declaredAsk, index) => (
+                <p
+                  className="truncate text-2xs text-muted-foreground"
+                  key={`${declaredAsk.type}-${declaredAsk.ask}`}
+                >
+                  {index + 1}. {declaredAsk.ask}
+                </p>
+              ))}
+            </div>
+          ) : quickOptions.length > 0 ? (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {quickOptions.map((option) => (
+                <Button
+                  data-testid="attention-quick-option"
+                  disabled={!canPost}
+                  key={option}
+                  onClick={() => onReply(item, option)}
+                  size="xs"
+                  type="button"
+                  variant="default"
+                >
+                  {option}
+                </Button>
+              ))}
+            </div>
+          ) : null
+        ) : null}
       </div>
       {expanded ? (
         <div
           className="mt-3 border-t border-border/60 pt-3"
           data-testid="attention-card-expanded"
         >
-          <div className="text-sm text-foreground/90">
-            <Markdown content={content} />
-          </div>
+          {/* Reading order: ask, options, body, reply — the options never
+              sit below the fold of a long message. */}
           {isMultiAsk ? (
-            <div className="mt-3 flex flex-col gap-2">
+            <div className="flex flex-col gap-2">
               <p
                 className="text-2xs text-muted-foreground"
                 data-testid="attention-subitems-progress"
               >
                 {answeredCount} of {declaredAsks.length} answered
               </p>
-              {declaredAsks.map((declaredAsk, index) => (
-                <div
-                  className="rounded-lg border border-border/60 p-2.5"
-                  data-testid="attention-subitem"
-                  key={`${declaredAsk.type}-${declaredAsk.ask}`}
-                >
-                  <p className="text-sm font-medium text-foreground">
-                    {index + 1}. {declaredAsk.ask}
-                  </p>
-                  {declaredAsk.options.length > 0 ? (
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      {declaredAsk.options.map((option) => (
-                        <Button
-                          data-testid="attention-subitem-option"
-                          disabled={!canPost}
-                          key={option}
-                          onClick={() =>
-                            setSubAnswers((prev) => ({
-                              ...prev,
-                              [index]: option,
-                            }))
-                          }
-                          size="xs"
-                          type="button"
-                          variant={
-                            subAnswers[index] === option ? "default" : "outline"
-                          }
-                        >
-                          {option}
-                        </Button>
-                      ))}
-                    </div>
-                  ) : null}
-                  <input
-                    className="mt-2 w-full rounded-md border border-border/60 bg-background px-2 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/50"
-                    data-testid="attention-subitem-input"
-                    onChange={(event) =>
-                      setSubAnswers((prev) => ({
-                        ...prev,
-                        [index]: event.target.value,
-                      }))
-                    }
-                    placeholder="Type an answer…"
-                    type="text"
-                    value={subAnswers[index] ?? ""}
-                  />
-                </div>
-              ))}
+              {declaredAsks.map((declaredAsk, index) => {
+                // Optionless declared asks fall back to the closed
+                // per-type defaults (fixture 4: a bare Review sub-ask
+                // still gets its one-click pair plus the way out).
+                const subOptions =
+                  declaredAsk.options.length > 0
+                    ? declaredAsk.options
+                    : defaultDeclaredOptions(declaredAsk.type);
+                return (
+                  <div
+                    className="rounded-lg border border-border/60 p-2.5"
+                    data-testid="attention-subitem"
+                    key={`${declaredAsk.type}-${declaredAsk.ask}`}
+                  >
+                    <p className="text-sm font-medium text-foreground">
+                      {index + 1}. {declaredAsk.ask}
+                    </p>
+                    {subOptions.length > 0 ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        {subOptions.map((option) => (
+                          <Button
+                            data-testid="attention-subitem-option"
+                            disabled={!canPost}
+                            key={option}
+                            onClick={() =>
+                              setSubAnswers((prev) => ({
+                                ...prev,
+                                [index]: option,
+                              }))
+                            }
+                            size="xs"
+                            type="button"
+                            variant={
+                              subAnswers[index] === option
+                                ? "default"
+                                : "outline"
+                            }
+                          >
+                            {option}
+                          </Button>
+                        ))}
+                      </div>
+                    ) : null}
+                    <input
+                      className="mt-2 w-full rounded-md border border-border/60 bg-background px-2 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/50"
+                      data-testid="attention-subitem-input"
+                      onChange={(event) =>
+                        setSubAnswers((prev) => ({
+                          ...prev,
+                          [index]: event.target.value,
+                        }))
+                      }
+                      placeholder="Type an answer…"
+                      type="text"
+                      value={subAnswers[index] ?? ""}
+                    />
+                  </div>
+                );
+              })}
               <div className="flex items-center justify-end gap-1">
                 <Button
                   data-testid="attention-action-reply"
@@ -431,21 +527,11 @@ export function AttentionCard({
                 >
                   Send all
                 </Button>
-                <Button
-                  disabled={!canOpen}
-                  onClick={() => onOpen(item)}
-                  size="xs"
-                  type="button"
-                  variant="outline"
-                >
-                  <ArrowUpRight />
-                  Open
-                </Button>
               </div>
             </div>
           ) : null}
           {!isMultiAsk && quickOptions.length > 0 ? (
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               {quickOptions.map((option) => (
                 <Button
                   data-testid="attention-quick-option"
@@ -454,19 +540,22 @@ export function AttentionCard({
                   onClick={() => onReply(item, option)}
                   size="xs"
                   type="button"
-                  variant="outline"
+                  variant="default"
                 >
                   {option}
                 </Button>
               ))}
             </div>
           ) : null}
+          <div className="mt-3 text-sm text-foreground/90">
+            <Markdown content={content} />
+          </div>
           {isMultiAsk ? null : (
             <div className="mt-3 flex items-end gap-2">
               <textarea
                 // biome-ignore lint/a11y/noAutofocus: expanding a card is an explicit intent to reply
                 autoFocus
-                className="min-h-16 w-full flex-1 resize-y rounded-lg border border-border/60 bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/50"
+                className="min-h-9 w-full flex-1 resize-y rounded-lg border border-border/60 bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:min-h-16 focus:border-primary/50"
                 data-testid="attention-reply-input"
                 onChange={(event) => setReplyText(event.target.value)}
                 placeholder={
@@ -476,27 +565,15 @@ export function AttentionCard({
                 }
                 value={replyText}
               />
-              <div className="flex shrink-0 flex-col gap-1">
-                <Button
-                  data-testid="attention-action-reply"
-                  disabled={!canPost || replyText.trim().length === 0}
-                  onClick={handleReply}
-                  size="xs"
-                  type="button"
-                >
-                  Reply
-                </Button>
-                <Button
-                  disabled={!canOpen}
-                  onClick={() => onOpen(item)}
-                  size="xs"
-                  type="button"
-                  variant="outline"
-                >
-                  <ArrowUpRight />
-                  Open
-                </Button>
-              </div>
+              <Button
+                data-testid="attention-action-reply"
+                disabled={!canPost || replyText.trim().length === 0}
+                onClick={handleReply}
+                size="xs"
+                type="button"
+              >
+                Reply
+              </Button>
             </div>
           )}
         </div>

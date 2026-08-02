@@ -197,7 +197,16 @@ function toAttentionItem(
   };
 }
 
-export type AttentionAction = "done" | "noted" | "waiting";
+export type AttentionAction = "done" | "noted" | "waiting" | "handledElsewhere";
+
+/**
+ * The frozen Handled-elsewhere line (UX pass, "The wording"). Honest on
+ * all three readings of "handled": it stops the waiting, does not fake a
+ * resolution in the ask's favour, and gives the agent a defined path if
+ * it genuinely still needs the answer.
+ */
+export const HANDLED_ELSEWHERE_REPLY =
+  "Handled outside this thread, no answer coming here. If you are still blocked, say so and I will pick it up.";
 
 /**
  * An action posts a reply when someone is waiting for it. Nobody waits on
@@ -210,6 +219,30 @@ export function actionPublishes(
   action: AttentionAction,
 ): boolean {
   return !(action === "noted" && askType === "headsUp");
+}
+
+/**
+ * Locked action matrix: the generic action a card presents as primary.
+ * Done only where it genuinely means "I performed the manual step you
+ * needed" (Blocked); Noted only where nothing publishes (Heads up). The
+ * option-driven types (approval, decision, question, review) have option
+ * primaries instead and return null here.
+ */
+export function primaryGenericAction(
+  askType: AskType,
+): "done" | "noted" | null {
+  if (askType === "blocked") return "done";
+  if (askType === "headsUp") return "noted";
+  return null;
+}
+
+/**
+ * Handled elsewhere exists for every actionable type except Blocked
+ * (where Done already is the correct signal) and Heads up (where nothing
+ * publishes at all).
+ */
+export function offersHandledElsewhere(askType: AskType): boolean {
+  return askType !== "blocked" && askType !== "headsUp";
 }
 
 /** Whole days an item has been sitting on the user. 0 = under a day. */
