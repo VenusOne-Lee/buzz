@@ -1,4 +1,4 @@
-import { Activity, Bot, FolderGit2, Inbox, Zap } from "lucide-react";
+import { Activity, Bot, FolderGit2, Inbox, Target, Zap } from "lucide-react";
 
 import { TopbarSearch } from "@/features/search/ui/TopbarSearch";
 import { FeatureGate } from "@/shared/features";
@@ -19,7 +19,8 @@ type SidebarSelectedView =
   | "agents"
   | "workflows"
   | "pulse"
-  | "projects";
+  | "projects"
+  | "myzone";
 
 type AppSidebarPinnedHeaderProps = {
   channelLabels: Record<string, string>;
@@ -39,6 +40,7 @@ type AppSidebarPrimaryMenuProps = {
   homeBadgeCount: number;
   onSelectAgents: () => void;
   onSelectHome: () => void;
+  onSelectMyZone: () => void;
   onSelectProjects: () => void;
   onSelectPulse: () => void;
   onSelectWorkflows: () => void;
@@ -84,6 +86,7 @@ export function AppSidebarPrimaryMenu({
   homeBadgeCount,
   onSelectAgents,
   onSelectHome,
+  onSelectMyZone,
   onSelectProjects,
   onSelectPulse,
   onSelectWorkflows,
@@ -115,6 +118,20 @@ export function AppSidebarPrimaryMenu({
             </SidebarMenuBadge>
           ) : null}
         </SidebarMenuItem>
+        <FeatureGate feature="myzone">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              data-testid="open-myzone-view"
+              isActive={selectedView === "myzone"}
+              onClick={onSelectMyZone}
+              tooltip="MyZone"
+              type="button"
+            >
+              <Target className="h-4 w-4" />
+              <SidebarMenuLabel>MyZone</SidebarMenuLabel>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </FeatureGate>
         <FeatureGate feature="pulse">
           <SidebarMenuItem>
             <SidebarMenuButton
