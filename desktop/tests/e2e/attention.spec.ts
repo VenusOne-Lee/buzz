@@ -226,16 +226,32 @@ test.describe("attention views", () => {
     ).toHaveText("0 of 2 answered");
     await multiCard.getByTestId("attention-card-ask").click();
 
-    // Undo: Noted parks the heads-up card, Undo brings it straight back.
+    // Noted on a To note item is LOCAL-ONLY: the card leaves immediately,
+    // nothing publishes — no reply-queue "posts in 5s" toast appears.
     const notedCard = page.locator('article[data-testid^="attention-card-"]', {
       hasText: "FYI the launch deck shipped",
     });
     await notedCard.hover();
     await notedCard.getByTestId("attention-action-noted").click();
     await expect(cards).toHaveCount(5);
+    await expect(page.getByText("Noted locally")).toBeVisible();
+    await expect(page.getByText("Noted — reply posts in 5s")).toHaveCount(0);
     const undoButton = page.getByRole("button", { name: "Undo" });
     await expect(undoButton).toBeVisible();
     await undoButton.click();
+    await expect(cards).toHaveCount(6);
+
+    // Note all clears the whole To note strip locally; Undo restores it.
+    await expect(page.getByTestId("attention-section-note")).toBeVisible();
+    await page.getByTestId("attention-note-all").click();
+    await expect(page.getByTestId("attention-section-note")).not.toBeVisible();
+    await expect(cards).toHaveCount(5);
+    await expect(page.getByText("Noted 1 item locally")).toBeVisible();
+    await page
+      .locator("li", { hasText: "Noted 1 item locally" })
+      .getByRole("button", { name: "Undo" })
+      .click();
+    await expect(page.getByTestId("attention-section-note")).toBeVisible();
     await expect(cards).toHaveCount(6);
 
     // Done: the zone change applies immediately, the Undo toast appears,

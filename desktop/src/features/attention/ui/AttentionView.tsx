@@ -18,6 +18,7 @@ type AttentionViewProps = {
   errorMessage?: string;
   isLoading: boolean;
   onAction: (item: AttentionItem, action: AttentionCardAction) => void;
+  onNoteAll: () => void;
   onOpen: (item: AttentionItem) => void;
   onOverrideBadge: (id: string, type: AskType) => void;
   onReply: (item: AttentionItem, text: string) => void;
@@ -46,6 +47,7 @@ export function AttentionView({
   errorMessage,
   isLoading,
   onAction,
+  onNoteAll,
   onOpen,
   onOverrideBadge,
   onReply,
@@ -309,7 +311,17 @@ export function AttentionView({
               ) : null}
               {projection.headsUp.length > 0 ? (
                 <section data-testid="attention-section-note">
-                  <h2 className={sectionHeaderClassName}>To note</h2>
+                  <div className="flex items-center justify-between">
+                    <h2 className={sectionHeaderClassName}>To note</h2>
+                    <button
+                      className="rounded-full px-2 py-0.5 text-2xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      data-testid="attention-note-all"
+                      onClick={onNoteAll}
+                      type="button"
+                    >
+                      Note all
+                    </button>
+                  </div>
                   <div className="flex flex-col gap-2">
                     {projection.headsUp.map(renderCard)}
                   </div>

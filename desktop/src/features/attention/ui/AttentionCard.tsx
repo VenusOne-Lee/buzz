@@ -272,7 +272,9 @@ export function AttentionCard({
             {item.zone === "needsMe" && isHeadsUp ? (
               <Button
                 data-testid="attention-action-noted"
-                disabled={!canPost}
+                // Noted on a To note item is local-only — it needs no
+                // channel to post into, only a non-pending card.
+                disabled={isPending}
                 onClick={() => onAction(item, "noted")}
                 size="xs"
                 type="button"

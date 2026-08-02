@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  actionPublishes,
   attentionReason,
   DONE_RETENTION_SECONDS,
   isAttentionWorthy,
@@ -174,6 +175,26 @@ test("without a viewer name the declared tier is inert", () => {
   // projection knows, and stripping leaves no other ask.
   assert.equal(projection.needsMe.length, 0);
   assert.equal(projection.headsUp.length, 1);
+});
+
+test("Noted on a To note item is silent; every other action publishes", () => {
+  // Regression pair: To note Noted publishes nothing…
+  assert.equal(actionPublishes("headsUp", "noted"), false);
+  // …and an actionable Noted (badge-corrected bucket) publishes.
+  for (const type of [
+    "decision",
+    "approval",
+    "question",
+    "review",
+    "blocked",
+  ]) {
+    assert.equal(actionPublishes(type, "noted"), true, `${type} noted`);
+  }
+  // Done and Waiting always publish, even from a heads-up-typed card.
+  assert.equal(actionPublishes("headsUp", "done"), true);
+  assert.equal(actionPublishes("headsUp", "waiting"), true);
+  assert.equal(actionPublishes("decision", "done"), true);
+  assert.equal(actionPublishes("question", "waiting"), true);
 });
 
 test("badge overrides rebucket items deterministically", () => {

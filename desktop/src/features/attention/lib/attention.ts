@@ -185,6 +185,21 @@ function toAttentionItem(
   };
 }
 
+export type AttentionAction = "done" | "noted" | "waiting";
+
+/**
+ * An action posts a reply when someone is waiting for it. Nobody waits on
+ * a To note item, so Noted there is local-only — nothing publishes. The
+ * check uses the item's CURRENT effective type, so a badge-corrected card
+ * follows its corrected bucket.
+ */
+export function actionPublishes(
+  askType: AskType,
+  action: AttentionAction,
+): boolean {
+  return !(action === "noted" && askType === "headsUp");
+}
+
 /** Whole days an item has been sitting on the user. 0 = under a day. */
 export function waitingDays(
   latestActivityAt: number,

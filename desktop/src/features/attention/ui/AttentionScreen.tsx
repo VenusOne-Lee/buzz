@@ -1,4 +1,5 @@
 import * as React from "react";
+import { toast } from "sonner";
 
 import { useAppNavigation } from "@/app/navigation/useAppNavigation";
 import { useChannelsQuery } from "@/features/channels/hooks";
@@ -6,6 +7,7 @@ import { useHomeFeedQuery } from "@/features/home/hooks";
 import { buildInboxItems } from "@/features/home/lib/inbox";
 import { useSendMessageMutation } from "@/features/messages/hooks";
 import {
+  actionPublishes,
   type AttentionItem,
   attentionThreadRootId,
   projectAttention,
@@ -145,6 +147,16 @@ export function AttentionScreen() {
 
   const handleAction = React.useCallback(
     (item: AttentionItem, action: AttentionCardAction) => {
+      // Nobody waits on a To note item: Noted there is local-only — the
+      // zone change applies, nothing publishes, and Undo restores it.
+      if (!actionPublishes(item.askType, action)) {
+        const revert = buildRevert(item.id);
+        markDone(item.id);
+        toast("Noted locally", {
+          action: { label: "Undo", onClick: revert },
+        });
+        return;
+      }
       const config = ACTION_CONFIG[action];
       queueAction({
         itemId: item.id,
@@ -157,6 +169,32 @@ export function AttentionScreen() {
     },
     [buildRevert, markDone, markWaiting, queueAction, sendThreadReply],
   );
+
+  const headsUpItems = projection.headsUp;
+  const handleNoteAll = React.useCallback(() => {
+    if (headsUpItems.length === 0) {
+      return;
+    }
+    const reverts = headsUpItems.map((item) => buildRevert(item.id));
+    for (const item of headsUpItems) {
+      markDone(item.id);
+    }
+    toast(
+      headsUpItems.length === 1
+        ? "Noted 1 item locally"
+        : `Noted ${headsUpItems.length} items locally`,
+      {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            for (const revert of reverts) {
+              revert();
+            }
+          },
+        },
+      },
+    );
+  }, [buildRevert, headsUpItems, markDone]);
 
   const handleReply = React.useCallback(
     (item: AttentionItem, text: string) => {
@@ -196,6 +234,7 @@ export function AttentionScreen() {
       }
       isLoading={homeFeedQuery.isLoading}
       onAction={handleAction}
+      onNoteAll={handleNoteAll}
       onOpen={handleOpen}
       onOverrideBadge={setOverride}
       onReply={handleReply}
