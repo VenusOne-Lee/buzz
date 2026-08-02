@@ -116,6 +116,83 @@ test("multi-ask messages carry askCount through the projection", () => {
   assert.equal(projection.needsMe[0].askCount, 2);
 });
 
+test("declared asks for the viewer beat the derived tier", () => {
+  const content = [
+    "Context paragraph that mentions review casually.",
+    "**Needs Lee, decision:** Ship now or wait for the fix?",
+    "- Ship it now.",
+    "- Wait for the relay fix.",
+  ].join("\n");
+  const projection = projectAttention([makeInboxItem({ content })], {}, NOW, {
+    viewerName: "Lee Ntshudisane",
+  });
+  assert.equal(projection.needsMe.length, 1);
+  const item = projection.needsMe[0];
+  assert.equal(item.askType, "decision");
+  assert.equal(item.ask, "Ship now or wait for the fix?");
+  assert.equal(item.askCount, 1);
+  assert.equal(item.declaredAsks?.length, 1);
+  assert.deepEqual(item.declaredAsks?.[0].options, [
+    "Ship it now.",
+    "Wait for the relay fix.",
+  ]);
+});
+
+test("two declared asks for the viewer set askCount and declaredAsks", () => {
+  const content = [
+    "**Needs Lee, question:** Did the overnight backup run?",
+    "**Needs Lee, review:** Review the retention change when you can.",
+  ].join("\n");
+  const projection = projectAttention([makeInboxItem({ content })], {}, NOW, {
+    viewerName: "Lee",
+  });
+  assert.equal(projection.needsMe.length, 1);
+  assert.equal(projection.needsMe[0].askCount, 2);
+  assert.equal(projection.needsMe[0].declaredAsks?.length, 2);
+  assert.equal(projection.needsMe[0].askType, "question");
+});
+
+test("messages with only non-viewer declarations demote to Heads up", () => {
+  const content = [
+    "**Needs Axel, decision:** Ship now or wait for the fix?",
+    "- Ship it now.",
+    "- Wait for the relay fix.",
+  ].join("\n");
+  const projection = projectAttention([makeInboxItem({ content })], {}, NOW, {
+    viewerName: "Lee",
+  });
+  assert.equal(projection.needsMe.length, 0);
+  assert.equal(projection.headsUp.length, 1);
+  assert.equal(projection.headsUp[0].askType, "headsUp");
+  assert.equal(projection.headsUp[0].declaredAsks, undefined);
+});
+
+test("without a viewer name the declared tier is inert", () => {
+  const content = "**Needs Lee, decision:** Ship now or wait for the fix?";
+  const projection = projectAttention([makeInboxItem({ content })], {}, NOW);
+  // Falls to derived: the declaration is for someone else as far as the
+  // projection knows, and stripping leaves no other ask.
+  assert.equal(projection.needsMe.length, 0);
+  assert.equal(projection.headsUp.length, 1);
+});
+
+test("badge overrides rebucket items deterministically", () => {
+  const overridden = projectAttention(
+    [makeInboxItem({ content: "hello" })],
+    {},
+    NOW,
+    { badgeOverrides: { "conv-1": "decision" } },
+  );
+  assert.equal(overridden.needsMe.length, 1);
+  assert.equal(overridden.needsMe[0].askType, "decision");
+
+  const demoted = projectAttention([makeInboxItem()], {}, NOW, {
+    badgeOverrides: { "conv-1": "headsUp" },
+  });
+  assert.equal(demoted.needsMe.length, 0);
+  assert.equal(demoted.headsUp.length, 1);
+});
+
 test("config-nudge noise demotes to Heads up", () => {
   const projection = projectAttention(
     [makeInboxItem({ content: "Please update buzz:config-nudge settings." })],

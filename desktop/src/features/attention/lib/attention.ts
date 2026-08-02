@@ -1,10 +1,18 @@
 import type { InboxItem } from "@/features/home/lib/inbox";
 import { getThreadReference } from "@/features/messages/lib/threading";
 import {
+  type DeclaredAsk,
+  parseDeclaredAsks,
+  stripDeclaredAskLines,
+  viewerAsks,
+} from "@/features/attention/lib/declaredAsks";
+import {
   type AskType,
   classifyAsk,
+  MAX_ASK_COUNT,
 } from "@/features/attention/lib/taskExtraction";
 
+export type { DeclaredAsk } from "@/features/attention/lib/declaredAsks";
 export type { AskType } from "@/features/attention/lib/taskExtraction";
 
 export type AttentionZone = "needsMe" | "waiting" | "done";
@@ -29,6 +37,11 @@ export type AttentionItem = {
   askType: AskType;
   /** Distinct qualifying asks in the message; >1 renders a multi-ask headline. */
   askCount: number;
+  /**
+   * Tier-1 declared asks addressed to the viewer (base_prompt.md "Declare
+   * what you need" convention). Present only when the declared tier won.
+   */
+  declaredAsks?: DeclaredAsk[];
   zone: AttentionZone;
   zoneChangedAt: number | null;
   /**
@@ -91,12 +104,36 @@ export function attentionThreadRootId(item: InboxItem): string | null {
   return getThreadReference(item.item.tags).rootId;
 }
 
-function classifyInboxItem(item: InboxItem): {
+function classifyInboxItem(
+  item: InboxItem,
+  viewerName: string | undefined,
+): {
   ask: string | null;
   askType: AskType;
   askCount: number;
+  declaredAsks?: DeclaredAsk[];
 } {
-  const classification = classifyAsk(item.item.content);
+  // Tier 1: declared asks always beat the derived heuristics — the author
+  // stated exactly who they need and what for.
+  const declared = parseDeclaredAsks(item.item.content);
+  const mine = viewerAsks(declared, viewerName);
+  if (mine.length > 0) {
+    return {
+      ask: mine[0].ask,
+      askType: mine[0].type,
+      askCount: Math.min(mine.length, MAX_ASK_COUNT),
+      declaredAsks: mine,
+    };
+  }
+
+  // Tier 2: derived classification. Declarations addressed to other people
+  // are stripped first so a message that only needs someone else stays
+  // headsUp unless the remaining prose carries its own ask.
+  const derivedSource =
+    declared.length > 0
+      ? stripDeclaredAskLines(item.item.content)
+      : item.item.content;
+  const classification = classifyAsk(derivedSource);
   // Kind-level needs_action events carry their type; prose is classified.
   if (item.item.kind === KIND_WORKFLOW_APPROVAL_REQUESTED) {
     return {
@@ -125,15 +162,23 @@ function toAttentionItem(
   zone: AttentionZone,
   entry: ZoneStateEntry | undefined,
   reactivated: boolean,
+  options: ProjectAttentionOptions | undefined,
 ): AttentionItem {
-  const { ask, askType, askCount } = classifyInboxItem(item);
+  const { ask, askType, askCount, declaredAsks } = classifyInboxItem(
+    item,
+    options?.viewerName,
+  );
+  // A local badge correction wins over both tiers; it never reclassifies
+  // the declared sub-asks, only the card's presented type (and bucket).
+  const override = options?.badgeOverrides?.[item.conversationId];
   return {
     id: item.conversationId,
     inboxItem: item,
     reason: attentionReason(item),
     ask,
-    askType,
+    askType: override ?? askType,
     askCount,
+    declaredAsks,
     zone,
     zoneChangedAt: entry?.changedAt ?? null,
     reactivated,
@@ -156,6 +201,13 @@ export function isSameLocalDay(aSeconds: number, bSeconds: number): boolean {
   );
 }
 
+export type ProjectAttentionOptions = {
+  /** Viewer display name for the declared-ask tier ("Needs <Name>, …"). */
+  viewerName?: string;
+  /** Local badge corrections, keyed by conversation id. */
+  badgeOverrides?: Record<string, AskType>;
+};
+
 /**
  * Split attention-worthy inbox items into the three Attention views.
  *
@@ -171,6 +223,7 @@ export function projectAttention(
   items: InboxItem[],
   zoneState: ZoneStateMap,
   nowSeconds: number,
+  options?: ProjectAttentionOptions,
 ): AttentionProjection {
   const needsMe: AttentionItem[] = [];
   const headsUp: AttentionItem[] = [];
@@ -184,15 +237,15 @@ export function projectAttention(
     const entry = zoneState[item.conversationId];
     let projected: AttentionItem;
     if (!entry) {
-      projected = toAttentionItem(item, "needsMe", undefined, false);
+      projected = toAttentionItem(item, "needsMe", undefined, false, options);
     } else if (item.latestActivityAt > entry.changedAt) {
-      projected = toAttentionItem(item, "needsMe", entry, true);
+      projected = toAttentionItem(item, "needsMe", entry, true, options);
     } else if (entry.zone === "waiting") {
-      waiting.push(toAttentionItem(item, "waiting", entry, false));
+      waiting.push(toAttentionItem(item, "waiting", entry, false, options));
       continue;
     } else {
       if (nowSeconds - entry.changedAt <= DONE_RETENTION_SECONDS) {
-        done.push(toAttentionItem(item, "done", entry, false));
+        done.push(toAttentionItem(item, "done", entry, false, options));
       }
       continue;
     }

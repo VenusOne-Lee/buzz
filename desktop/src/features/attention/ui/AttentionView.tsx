@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import type {
+  AskType,
   AttentionItem,
   AttentionProjection,
   AttentionZone,
@@ -18,6 +19,7 @@ type AttentionViewProps = {
   isLoading: boolean;
   onAction: (item: AttentionItem, action: AttentionCardAction) => void;
   onOpen: (item: AttentionItem) => void;
+  onOverrideBadge: (id: string, type: AskType) => void;
   onReply: (item: AttentionItem, text: string) => void;
   onRestore: (id: string) => void;
   pendingIds: ReadonlySet<string>;
@@ -45,6 +47,7 @@ export function AttentionView({
   isLoading,
   onAction,
   onOpen,
+  onOverrideBadge,
   onReply,
   onRestore,
   pendingIds,
@@ -175,6 +178,7 @@ export function AttentionView({
       key={item.id}
       onAction={onAction}
       onOpen={onOpen}
+      onOverrideBadge={onOverrideBadge}
       onReply={onReply}
       onRestore={onRestore}
       onToggleExpanded={toggleExpanded}

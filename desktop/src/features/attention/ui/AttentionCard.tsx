@@ -25,11 +25,21 @@ type AttentionCardProps = {
   item: AttentionItem;
   onAction: (item: AttentionItem, action: AttentionCardAction) => void;
   onOpen: (item: AttentionItem) => void;
+  onOverrideBadge: (id: string, type: AskType) => void;
   onReply: (item: AttentionItem, text: string) => void;
   onRestore: (id: string) => void;
   onToggleExpanded: (id: string) => void;
   selected: boolean;
 };
+
+const BADGE_ORDER: AskType[] = [
+  "decision",
+  "approval",
+  "question",
+  "review",
+  "blocked",
+  "headsUp",
+];
 
 const BADGES: Record<AskType, { label: string; className: string }> = {
   decision: {
@@ -58,6 +68,10 @@ const actionRowClassName =
 function cardHeadline(item: AttentionItem): string {
   // Multi-ask safety rule: never present one ask while hiding another —
   // the badge still reflects the first ask's type.
+  const declaredCount = item.declaredAsks?.length ?? 0;
+  if (declaredCount > 1) {
+    return `${declaredCount} asks`;
+  }
   if (item.askCount > 1) {
     return `${item.askCount} questions`;
   }
@@ -79,6 +93,7 @@ export function AttentionCard({
   item,
   onAction,
   onOpen,
+  onOverrideBadge,
   onReply,
   onRestore,
   onToggleExpanded,
@@ -90,17 +105,49 @@ export function AttentionCard({
   const canPost = canOpen && !isPending;
   const isHeadsUp = item.askType === "headsUp";
   const badge = BADGES[item.askType];
+  const declaredAsks = item.declaredAsks ?? [];
+  const isMultiAsk = declaredAsks.length > 1;
   const days = waitingDays(
     inboxItem.latestActivityAt,
     Math.floor(Date.now() / 1_000),
   );
 
   const [replyText, setReplyText] = React.useState("");
-
-  const quickOptions = React.useMemo(
-    () => deriveQuickOptions(item.askType, item.ask, content),
-    [item.askType, item.ask, content],
+  const [badgeMenuOpen, setBadgeMenuOpen] = React.useState(false);
+  // Per-sub-ask local answers, keyed by declared-ask index.
+  const [subAnswers, setSubAnswers] = React.useState<Record<number, string>>(
+    {},
   );
+
+  const quickOptions = React.useMemo(() => {
+    // Declared options take precedence over derived ones; multi-ask cards
+    // answer through their sub-items instead.
+    if (isMultiAsk) {
+      return [];
+    }
+    if (declaredAsks.length === 1 && declaredAsks[0].options.length > 0) {
+      return declaredAsks[0].options;
+    }
+    return deriveQuickOptions(item.askType, item.ask, content);
+  }, [isMultiAsk, declaredAsks, item.askType, item.ask, content]);
+
+  const answeredCount = declaredAsks.filter(
+    (_ask, index) => (subAnswers[index] ?? "").trim().length > 0,
+  ).length;
+
+  const handleSendAll = () => {
+    const lines = declaredAsks
+      .map((_ask, index) => {
+        const answer = (subAnswers[index] ?? "").trim();
+        return answer ? `${index + 1}. ${answer}` : null;
+      })
+      .filter((line): line is string => line !== null);
+    if (lines.length === 0) {
+      return;
+    }
+    onReply(item, lines.join("\n"));
+    setSubAnswers({});
+  };
 
   const handleBodyClick = (event: React.MouseEvent<HTMLElement>) => {
     const target = event.target as HTMLElement;
@@ -132,15 +179,44 @@ export function AttentionCard({
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: keyboard expand is handled by the view-level j/k/e bindings */}
       <div className="cursor-pointer" onClick={handleBodyClick}>
         <div className="flex min-w-0 items-center gap-2">
-          <span
-            className={cn(
-              "shrink-0 rounded-full px-2 py-0.5 text-2xs font-medium",
-              badge.className,
-            )}
-            data-testid="attention-card-badge"
-          >
-            {badge.label}
-          </span>
+          <div className="relative shrink-0">
+            <button
+              aria-expanded={badgeMenuOpen}
+              aria-label={`Change type (currently ${badge.label})`}
+              className={cn(
+                "rounded-full px-2 py-0.5 text-2xs font-medium",
+                badge.className,
+              )}
+              data-testid="attention-badge"
+              onClick={() => setBadgeMenuOpen((open) => !open)}
+              type="button"
+            >
+              {badge.label}
+            </button>
+            {badgeMenuOpen ? (
+              <div className="absolute left-0 top-full z-20 mt-1 w-28 rounded-lg border border-border bg-background p-1 shadow-md">
+                {BADGE_ORDER.map((type) => (
+                  <button
+                    className={cn(
+                      "block w-full rounded-md px-2 py-1 text-left text-2xs transition-colors hover:bg-muted",
+                      type === item.askType
+                        ? "font-semibold text-foreground"
+                        : "text-muted-foreground",
+                    )}
+                    data-testid={`attention-badge-option-${type}`}
+                    key={type}
+                    onClick={() => {
+                      onOverrideBadge(item.id, type);
+                      setBadgeMenuOpen(false);
+                    }}
+                    type="button"
+                  >
+                    {BADGES[type].label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <span
             className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground"
             data-testid="attention-card-ask"
@@ -279,7 +355,86 @@ export function AttentionCard({
           <div className="text-sm text-foreground/90">
             <Markdown content={content} />
           </div>
-          {quickOptions.length > 0 ? (
+          {isMultiAsk ? (
+            <div className="mt-3 flex flex-col gap-2">
+              <p
+                className="text-2xs text-muted-foreground"
+                data-testid="attention-subitems-progress"
+              >
+                {answeredCount} of {declaredAsks.length} answered
+              </p>
+              {declaredAsks.map((declaredAsk, index) => (
+                <div
+                  className="rounded-lg border border-border/60 p-2.5"
+                  data-testid="attention-subitem"
+                  key={`${declaredAsk.type}-${declaredAsk.ask}`}
+                >
+                  <p className="text-sm font-medium text-foreground">
+                    {index + 1}. {declaredAsk.ask}
+                  </p>
+                  {declaredAsk.options.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {declaredAsk.options.map((option) => (
+                        <Button
+                          data-testid="attention-subitem-option"
+                          disabled={!canPost}
+                          key={option}
+                          onClick={() =>
+                            setSubAnswers((prev) => ({
+                              ...prev,
+                              [index]: option,
+                            }))
+                          }
+                          size="xs"
+                          type="button"
+                          variant={
+                            subAnswers[index] === option ? "default" : "outline"
+                          }
+                        >
+                          {option}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : null}
+                  <input
+                    className="mt-2 w-full rounded-md border border-border/60 bg-background px-2 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/50"
+                    data-testid="attention-subitem-input"
+                    onChange={(event) =>
+                      setSubAnswers((prev) => ({
+                        ...prev,
+                        [index]: event.target.value,
+                      }))
+                    }
+                    placeholder="Type an answer…"
+                    type="text"
+                    value={subAnswers[index] ?? ""}
+                  />
+                </div>
+              ))}
+              <div className="flex items-center justify-end gap-1">
+                <Button
+                  data-testid="attention-action-reply"
+                  disabled={!canPost || answeredCount === 0}
+                  onClick={handleSendAll}
+                  size="xs"
+                  type="button"
+                >
+                  Send all
+                </Button>
+                <Button
+                  disabled={!canOpen}
+                  onClick={() => onOpen(item)}
+                  size="xs"
+                  type="button"
+                  variant="outline"
+                >
+                  <ArrowUpRight />
+                  Open
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          {!isMultiAsk && quickOptions.length > 0 ? (
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               {quickOptions.map((option) => (
                 <Button
@@ -296,42 +451,44 @@ export function AttentionCard({
               ))}
             </div>
           ) : null}
-          <div className="mt-3 flex items-end gap-2">
-            <textarea
-              // biome-ignore lint/a11y/noAutofocus: expanding a card is an explicit intent to reply
-              autoFocus
-              className="min-h-16 w-full flex-1 resize-y rounded-lg border border-border/60 bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/50"
-              data-testid="attention-reply-input"
-              onChange={(event) => setReplyText(event.target.value)}
-              placeholder={
-                canOpen
-                  ? "Reply in the source thread…"
-                  : "This item has no channel to reply into."
-              }
-              value={replyText}
-            />
-            <div className="flex shrink-0 flex-col gap-1">
-              <Button
-                data-testid="attention-action-reply"
-                disabled={!canPost || replyText.trim().length === 0}
-                onClick={handleReply}
-                size="xs"
-                type="button"
-              >
-                Reply
-              </Button>
-              <Button
-                disabled={!canOpen}
-                onClick={() => onOpen(item)}
-                size="xs"
-                type="button"
-                variant="outline"
-              >
-                <ArrowUpRight />
-                Open
-              </Button>
+          {isMultiAsk ? null : (
+            <div className="mt-3 flex items-end gap-2">
+              <textarea
+                // biome-ignore lint/a11y/noAutofocus: expanding a card is an explicit intent to reply
+                autoFocus
+                className="min-h-16 w-full flex-1 resize-y rounded-lg border border-border/60 bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/50"
+                data-testid="attention-reply-input"
+                onChange={(event) => setReplyText(event.target.value)}
+                placeholder={
+                  canOpen
+                    ? "Reply in the source thread…"
+                    : "This item has no channel to reply into."
+                }
+                value={replyText}
+              />
+              <div className="flex shrink-0 flex-col gap-1">
+                <Button
+                  data-testid="attention-action-reply"
+                  disabled={!canPost || replyText.trim().length === 0}
+                  onClick={handleReply}
+                  size="xs"
+                  type="button"
+                >
+                  Reply
+                </Button>
+                <Button
+                  disabled={!canOpen}
+                  onClick={() => onOpen(item)}
+                  size="xs"
+                  type="button"
+                  variant="outline"
+                >
+                  <ArrowUpRight />
+                  Open
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       ) : null}
     </article>

@@ -14,6 +14,7 @@ import type { AttentionCardAction } from "@/features/attention/ui/AttentionCard"
 import { AttentionView } from "@/features/attention/ui/AttentionView";
 import { useActionQueue } from "@/features/attention/useActionQueue";
 import { useAttentionZoneState } from "@/features/attention/useAttentionZoneState";
+import { useBadgeOverrides } from "@/features/attention/useBadgeOverrides";
 import { useUsersBatchQuery } from "@/features/profile/hooks";
 import { useIdentityQuery } from "@/shared/api/hooks";
 import {
@@ -65,10 +66,14 @@ export function AttentionScreen() {
           ...feed.feed.needsAction,
           ...feed.feed.activity,
           ...feed.feed.agentActivity,
-        ].map((item) => item.pubkey),
+        ]
+          .map((item) => item.pubkey)
+          // Include the viewer so the declared-ask tier can resolve the
+          // viewer display name ("Needs <Name>, …") from the same lookup.
+          .concat(currentPubkey ? [currentPubkey] : []),
       ),
     ];
-  }, [feed]);
+  }, [feed, currentPubkey]);
   const profilesQuery = useUsersBatchQuery(profilePubkeys, {
     enabled: profilePubkeys.length > 0,
   });
@@ -84,10 +89,21 @@ export function AttentionScreen() {
     [channelsQuery.data, currentPubkey, feed, profilesQuery.data?.profiles],
   );
 
+  const { overrides, setOverride } = useBadgeOverrides(currentPubkey);
+
+  const viewerProfile = currentPubkey
+    ? profilesQuery.data?.profiles?.[currentPubkey.toLowerCase()]
+    : undefined;
+  const viewerName =
+    viewerProfile?.displayName ?? viewerProfile?.name ?? undefined;
+
   const projection = React.useMemo(
     () =>
-      projectAttention(inboxItems, zoneState, Math.floor(Date.now() / 1_000)),
-    [inboxItems, zoneState],
+      projectAttention(inboxItems, zoneState, Math.floor(Date.now() / 1_000), {
+        badgeOverrides: overrides,
+        viewerName,
+      }),
+    [inboxItems, zoneState, overrides, viewerName],
   );
 
   // Snapshot for undo/revert closures: reading via ref avoids rebinding the
@@ -181,6 +197,7 @@ export function AttentionScreen() {
       isLoading={homeFeedQuery.isLoading}
       onAction={handleAction}
       onOpen={handleOpen}
+      onOverrideBadge={setOverride}
       onReply={handleReply}
       onRestore={restore}
       pendingIds={pendingIds}
