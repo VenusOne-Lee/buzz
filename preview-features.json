@@ -29,7 +29,8 @@
       "id": "myzone",
       "name": "MyZone",
       "description": "Personal attention layer: what needs you right now, across channels and agents",
-      "platforms": ["desktop"]
+      "platforms": ["desktop"],
+      "defaultEnabled": true
     },
     {
       "id": "agentManagedProfiles",
