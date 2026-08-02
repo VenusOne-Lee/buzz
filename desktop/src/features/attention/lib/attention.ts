@@ -21,6 +21,11 @@ export type ZoneStateEntry = {
   zone: "waiting" | "done";
   /** Unix seconds when the user parked the item in this zone. */
   changedAt: number;
+  /**
+   * Unix seconds when the parking action's reply actually published
+   * (set at commit, absent for silent actions). Re-parking clears it.
+   */
+  respondedAt?: number;
 };
 
 /** Keyed by the inbox item's stable conversation id. */
@@ -49,6 +54,12 @@ export type AttentionItem = {
    * afterwards, pulling it back into Needs Me.
    */
   reactivated: boolean;
+  /**
+   * True on a reactivated card whose parking action already published its
+   * reply. Without this flag the returning card reads as the action having
+   * failed, and the user answers twice.
+   */
+  responded: boolean;
 };
 
 export type AttentionProjection = {
@@ -182,6 +193,7 @@ function toAttentionItem(
     zone,
     zoneChangedAt: entry?.changedAt ?? null,
     reactivated,
+    responded: reactivated && entry?.respondedAt != null,
   };
 }
 
@@ -283,6 +295,22 @@ export function projectAttention(
   done.sort((a, b) => (b.zoneChangedAt ?? 0) - (a.zoneChangedAt ?? 0));
 
   return { needsMe, headsUp, waiting, done };
+}
+
+/**
+ * Zone state that is safe to persist. Entries still inside an undo hold
+ * window are excluded: a held action that survives an app quit would leave
+ * the card cleared while its reply never publishes — the exact split state
+ * the undo guarantee forbids. Held entries persist only on commit.
+ */
+export function persistableZoneState(
+  state: ZoneStateMap,
+  holdIds: ReadonlySet<string>,
+): ZoneStateMap {
+  if (holdIds.size === 0) return state;
+  return Object.fromEntries(
+    Object.entries(state).filter(([id]) => !holdIds.has(id)),
+  );
 }
 
 /**

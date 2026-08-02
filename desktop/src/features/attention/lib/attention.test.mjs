@@ -6,6 +6,7 @@ import {
   attentionReason,
   DONE_RETENTION_SECONDS,
   isAttentionWorthy,
+  persistableZoneState,
   projectAttention,
   pruneZoneState,
 } from "./attention.ts";
@@ -441,4 +442,68 @@ test("pruneZoneState drops expired done entries and caps the map", () => {
   );
   const capped = pruneZoneState(crowded, NOW, 3);
   assert.deepEqual(Object.keys(capped).sort(), ["conv-0", "conv-1", "conv-2"]);
+});
+
+test("persistableZoneState excludes held entries and persists the rest", () => {
+  const state = {
+    "conv-held": { zone: "done", changedAt: NOW - 2 },
+    "conv-settled": { zone: "waiting", changedAt: NOW - 60 },
+  };
+  const filtered = persistableZoneState(state, new Set(["conv-held"]));
+  assert.deepEqual(Object.keys(filtered), ["conv-settled"]);
+  // No holds: same map back, nothing dropped.
+  assert.equal(persistableZoneState(state, new Set()), state);
+});
+
+test("a reactivated card whose reply committed carries the responded flag", () => {
+  const parkedAt = NOW - 600;
+  const items = [
+    makeInboxItem({
+      conversationId: "conv-replied",
+      latestActivityAt: NOW - 10,
+    }),
+    makeInboxItem({
+      conversationId: "conv-silent",
+      latestActivityAt: NOW - 10,
+    }),
+  ];
+  const projection = projectAttention(
+    items,
+    {
+      "conv-replied": {
+        zone: "done",
+        changedAt: parkedAt,
+        respondedAt: parkedAt + 5,
+      },
+      "conv-silent": { zone: "done", changedAt: parkedAt },
+    },
+    NOW,
+  );
+  const replied = projection.needsMe.find((item) => item.id === "conv-replied");
+  const silent = projection.needsMe.find((item) => item.id === "conv-silent");
+  assert.equal(replied.reactivated, true);
+  assert.equal(replied.responded, true);
+  assert.equal(silent.reactivated, true);
+  assert.equal(silent.responded, false);
+});
+
+test("an exact-entry restore keeps a reactivated card in Needs Me, a re-marked one hides it", () => {
+  const parkedAt = NOW - 600;
+  const item = makeInboxItem({ latestActivityAt: NOW - 300 });
+  // Undo restores the original entry: activity is newer, card reactivates.
+  const restored = projectAttention(
+    [item],
+    { "conv-1": { zone: "waiting", changedAt: parkedAt } },
+    NOW,
+  );
+  assert.equal(restored.needsMe.length, 1);
+  assert.equal(restored.needsMe[0].reactivated, true);
+  // A revert that re-marked with a fresh timestamp would bury it in Waiting.
+  const remarked = projectAttention(
+    [item],
+    { "conv-1": { zone: "waiting", changedAt: NOW } },
+    NOW,
+  );
+  assert.equal(remarked.needsMe.length, 0);
+  assert.equal(remarked.waiting.length, 1);
 });

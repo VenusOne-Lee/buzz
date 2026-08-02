@@ -16,6 +16,12 @@ export type QueuedActionInput = {
   send: () => Promise<unknown>;
 };
 
+export type QueuedBatchInput = {
+  /** One toast for the whole batch; Undo restores every item in it. */
+  toastLabel: string;
+  items: Array<Omit<QueuedActionInput, "toastLabel">>;
+};
+
 type PendingAction = {
   timer: ReturnType<typeof setTimeout>;
 };
@@ -48,40 +54,52 @@ export function useActionQueue() {
     });
   }, []);
 
-  const queueAction = React.useCallback(
-    ({ itemId, toastLabel, apply, revert, send }: QueuedActionInput) => {
-      if (pendingRef.current.has(itemId)) {
+  const queueBatch = React.useCallback(
+    ({ toastLabel, items }: QueuedBatchInput) => {
+      const fresh = items.filter(
+        (item) => !pendingRef.current.has(item.itemId),
+      );
+      if (fresh.length === 0) {
         return false;
       }
-      apply();
+      for (const item of fresh) {
+        item.apply();
+      }
 
-      const finish = () => {
-        pendingRef.current.delete(itemId);
-        markPending(itemId, false);
+      const finishAll = () => {
+        for (const item of fresh) {
+          pendingRef.current.delete(item.itemId);
+          markPending(item.itemId, false);
+        }
       };
 
       const timer = setTimeout(() => {
-        finish();
-        send().catch(() => {
-          toast.error("Could not post your reply. The item was restored.");
-          revert();
-        });
+        finishAll();
+        for (const item of fresh) {
+          item.send().catch(() => {
+            toast.error("Could not post your reply. The item was restored.");
+            item.revert();
+          });
+        }
       }, UNDO_WINDOW_MS);
 
-      pendingRef.current.set(itemId, { timer });
-      markPending(itemId, true);
+      for (const item of fresh) {
+        pendingRef.current.set(item.itemId, { timer });
+        markPending(item.itemId, true);
+      }
 
       toast(toastLabel, {
         action: {
           label: "Undo",
           onClick: () => {
-            const pending = pendingRef.current.get(itemId);
-            if (!pending) {
+            if (!fresh.some((item) => pendingRef.current.has(item.itemId))) {
               return;
             }
-            clearTimeout(pending.timer);
-            finish();
-            revert();
+            clearTimeout(timer);
+            finishAll();
+            for (const item of fresh) {
+              item.revert();
+            }
           },
         },
         duration: UNDO_WINDOW_MS,
@@ -91,7 +109,13 @@ export function useActionQueue() {
     [markPending],
   );
 
-  return { pendingIds, queueAction };
+  const queueAction = React.useCallback(
+    ({ itemId, toastLabel, apply, revert, send }: QueuedActionInput) =>
+      queueBatch({ toastLabel, items: [{ itemId, apply, revert, send }] }),
+    [queueBatch],
+  );
+
+  return { pendingIds, queueAction, queueBatch };
 }
 
 export type ActionQueue = ReturnType<typeof useActionQueue>;

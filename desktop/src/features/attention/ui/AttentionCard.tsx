@@ -242,6 +242,14 @@ export function AttentionCard({
               New activity
             </span>
           ) : null}
+          {item.responded ? (
+            <span
+              className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-2xs font-medium text-emerald-600 dark:text-emerald-400"
+              data-testid="attention-responded-badge"
+            >
+              You replied
+            </span>
+          ) : null}
           <div className={actionRowClassName}>
             {item.zone === "needsMe" && !isHeadsUp ? (
               <>

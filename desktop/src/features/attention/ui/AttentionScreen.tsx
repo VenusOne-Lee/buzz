@@ -1,5 +1,4 @@
 import * as React from "react";
-import { toast } from "sonner";
 
 import { useAppNavigation } from "@/app/navigation/useAppNavigation";
 import { useChannelsQuery } from "@/features/channels/hooks";
@@ -52,11 +51,18 @@ export function AttentionScreen() {
   const homeFeedQuery = useHomeFeedQuery();
   const channelsQuery = useChannelsQuery();
   const { goChannel } = useAppNavigation();
-  const { markDone, markWaiting, restore, zoneState } =
-    useAttentionZoneState(currentPubkey);
+  const { pendingIds, queueAction, queueBatch } = useActionQueue();
+  // Held entries stay out of localStorage until commit (see hook docs).
+  const {
+    markDone,
+    markResponded,
+    markWaiting,
+    restore,
+    restoreEntry,
+    zoneState,
+  } = useAttentionZoneState(currentPubkey, pendingIds);
   const sendMutation = useSendMessageMutation(null, identityQuery.data);
   const { mutateAsync: sendMessage } = sendMutation;
-  const { pendingIds, queueAction } = useActionQueue();
 
   const feed = homeFeedQuery.data;
   const profilePubkeys = React.useMemo(() => {
@@ -116,44 +122,41 @@ export function AttentionScreen() {
   const buildRevert = React.useCallback(
     (id: string) => {
       const previous = zoneStateRef.current[id];
-      return () => {
-        if (!previous) {
-          restore(id);
-        } else if (previous.zone === "waiting") {
-          markWaiting(id);
-        } else {
-          markDone(id);
-        }
-      };
+      return () => restoreEntry(id, previous);
     },
-    [markDone, markWaiting, restore],
+    [restoreEntry],
   );
 
   const sendThreadReply = React.useCallback(
-    (item: AttentionItem, content: string) => {
+    async (item: AttentionItem, content: string) => {
       const channelId = item.inboxItem.item.channelId;
       if (!channelId) {
-        return Promise.reject(new Error("This item has no source channel."));
+        throw new Error("This item has no source channel.");
       }
-      return sendMessage({
+      const result = await sendMessage({
         channelId,
         content,
         parentEventId: item.inboxItem.item.id,
         mentionPubkeys: [item.inboxItem.item.pubkey],
       });
+      markResponded(item.id);
+      return result;
     },
-    [sendMessage],
+    [markResponded, sendMessage],
   );
 
   const handleAction = React.useCallback(
     (item: AttentionItem, action: AttentionCardAction) => {
-      // Nobody waits on a To note item: Noted there is local-only — the
-      // zone change applies, nothing publishes, and Undo restores it.
+      // Nobody waits on a To note item: Noted there is local-only. It still
+      // holds through the queue so every action type shares one code path;
+      // the commit is a no-op send.
       if (!actionPublishes(item.askType, action)) {
-        const revert = buildRevert(item.id);
-        markDone(item.id);
-        toast("Noted locally", {
-          action: { label: "Undo", onClick: revert },
+        queueAction({
+          itemId: item.id,
+          toastLabel: "Noted locally",
+          apply: () => markDone(item.id),
+          revert: buildRevert(item.id),
+          send: () => Promise.resolve(),
         });
         return;
       }
@@ -175,26 +178,19 @@ export function AttentionScreen() {
     if (headsUpItems.length === 0) {
       return;
     }
-    const reverts = headsUpItems.map((item) => buildRevert(item.id));
-    for (const item of headsUpItems) {
-      markDone(item.id);
-    }
-    toast(
-      headsUpItems.length === 1
-        ? "Noted 1 item locally"
-        : `Noted ${headsUpItems.length} items locally`,
-      {
-        action: {
-          label: "Undo",
-          onClick: () => {
-            for (const revert of reverts) {
-              revert();
-            }
-          },
-        },
-      },
-    );
-  }, [buildRevert, headsUpItems, markDone]);
+    queueBatch({
+      toastLabel:
+        headsUpItems.length === 1
+          ? "Noted 1 item locally"
+          : `Noted ${headsUpItems.length} items locally`,
+      items: headsUpItems.map((item) => ({
+        itemId: item.id,
+        apply: () => markDone(item.id),
+        revert: buildRevert(item.id),
+        send: () => Promise.resolve(),
+      })),
+    });
+  }, [buildRevert, headsUpItems, markDone, queueBatch]);
 
   const handleReply = React.useCallback(
     (item: AttentionItem, text: string) => {
