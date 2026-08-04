@@ -28,8 +28,10 @@ pub(crate) mod media;
 mod media_animated;
 mod media_download;
 mod media_gif;
+mod media_raw;
 mod media_snapshot_png;
 mod media_transcode;
+mod media_upload_progress;
 #[cfg(feature = "mesh-llm")]
 pub(crate) mod mesh_llm;
 mod messages;
@@ -44,6 +46,7 @@ mod project_git;
 mod project_git_branches;
 mod project_git_diff;
 mod project_git_exec;
+mod project_git_merge_error;
 mod project_git_push;
 mod project_git_workflow;
 mod project_repo_paths;
@@ -84,6 +87,7 @@ pub use legacy_storage::*;
 pub use link_preview::*;
 pub use media::*;
 pub use media_download::*;
+pub use media_raw::*;
 #[cfg(feature = "mesh-llm")]
 pub use mesh_llm::*;
 pub use messages::*;

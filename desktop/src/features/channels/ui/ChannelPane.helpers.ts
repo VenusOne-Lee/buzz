@@ -1,3 +1,4 @@
+import type * as React from "react";
 import { isEphemeralChannel } from "@/features/channels/lib/ephemeralChannel";
 import type { TimelineMessage } from "@/features/messages/types";
 import type { Channel } from "@/shared/api/types";
@@ -43,11 +44,44 @@ export function isWelcomeSetupSystemMessage(message: TimelineMessage) {
   }
 }
 
+export function isChannelCreatedSystemMessage(message: TimelineMessage) {
+  if (message.kind !== KIND_SYSTEM_MESSAGE) {
+    return false;
+  }
+
+  try {
+    return (
+      (JSON.parse(message.body) as { type?: string }).type === "channel_created"
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function mentionsKnownAgent(
   mentionPubkeys: string[],
   knownAgentPubkeys: ReadonlySet<string>,
 ) {
   return mentionPubkeys.some((pubkey) =>
     knownAgentPubkeys.has(pubkey.toLowerCase()),
+  );
+}
+
+/** CSS-variable overrides for the huddle-transcript presentation of the pane. */
+export const HUDDLE_TRANSCRIPT_ROOT_STYLE = {
+  "--buzz-channel-content-top-padding": "0rem",
+  "--channel-top-chrome-height": "0.25rem",
+} as React.CSSProperties;
+
+/**
+ * True when the pane shows an open channel the viewer has not joined —
+ * the join prompt replaces the composer in that state.
+ */
+export function isNonMemberChannelView(channel: Channel | null): boolean {
+  return (
+    channel !== null &&
+    !channel.isMember &&
+    channel.visibility === "open" &&
+    !channel.archivedAt
   );
 }

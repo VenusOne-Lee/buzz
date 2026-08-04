@@ -7,12 +7,11 @@ import type { SpineLens } from "@/features/spine/types";
 import { SpineRail } from "@/features/spine/ui/SpineRail";
 import { useSpineProjection } from "@/features/spine/useSpineProjection";
 import { useFeatureEnabled } from "@/shared/features";
+import { channelChrome } from "@/shared/layout/chromeLayout";
 import { cn } from "@/shared/lib/cn";
 
 type ChannelSpineStripProps = {
   channelId: string | null;
-  /** Header-offset class from the pane's channelChrome (e.g. `top-12`). */
-  topClassName?: string;
 };
 
 /**
@@ -20,10 +19,7 @@ type ChannelSpineStripProps = {
  * self-contained behind the `spine` preview flag so the channel pane
  * carries a single-line mount.
  */
-export function ChannelSpineStrip({
-  channelId,
-  topClassName,
-}: ChannelSpineStripProps) {
+export function ChannelSpineStrip({ channelId }: ChannelSpineStripProps) {
   const enabled = useFeatureEnabled("spine");
   const { goChannel } = useAppNavigation();
   const [open, setOpen] = React.useState(false);
@@ -52,7 +48,7 @@ export function ChannelSpineStrip({
     <div
       className={cn(
         "pointer-events-none absolute inset-x-0 z-30 flex flex-col",
-        topClassName,
+        channelChrome.top,
       )}
     >
       <div className="flex justify-end px-5 pt-1">
