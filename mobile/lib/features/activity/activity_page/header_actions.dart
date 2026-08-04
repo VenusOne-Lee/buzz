@@ -33,21 +33,12 @@ class _FilterMenuButton extends StatelessWidget {
         key: const ValueKey('activity-filter-menu'),
         borderRadius: BorderRadius.circular(Radii.md),
         onTap: () async {
-          final selected = await _showActivityPopover<InboxFilter>(
+          final selected = await showAnchoredPopover<InboxFilter>(
             context: buttonContext,
             width: 240,
-            alignment: _ActivityPopoverAlignment.start,
+            alignment: AnchoredPopoverAlignment.start,
             offset: const Offset(0, Grid.half),
             menuPadding: const EdgeInsets.symmetric(vertical: Grid.half),
-            color: context.colors.surface.withValues(alpha: 0.98),
-            elevation: 8,
-            shadowColor: context.colors.shadow.withValues(alpha: 0.18),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Radii.card),
-              side: BorderSide(
-                color: context.colors.outlineVariant.withValues(alpha: 0.45),
-              ),
-            ),
             surfaceKey: const ValueKey('activity-filter-popover'),
             items: [
               for (final entry in _filterLabels.entries)
@@ -179,17 +170,10 @@ class _InboxOptionsButton extends StatelessWidget {
         tooltip: 'Activity options',
         icon: const Icon(LucideIcons.ellipsis, size: 20),
         onPressed: () async {
-          final selected = await _showActivityPopover<String>(
+          final selected = await showAnchoredPopover<String>(
             context: buttonContext,
             width: 216,
-            alignment: _ActivityPopoverAlignment.end,
-            color: context.colors.surface,
-            elevation: 4,
-            shadowColor: context.colors.shadow.withValues(alpha: 0.18),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Radii.md),
-              side: BorderSide(color: context.colors.outline),
-            ),
+            alignment: AnchoredPopoverAlignment.end,
             surfaceKey: const ValueKey('activity-options-popover'),
             items: [
               PopupMenuItem(

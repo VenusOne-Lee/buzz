@@ -1,16 +1,18 @@
 import 'dart:async';
-import 'dart:math' as math;
-import 'dart:ui' show SemanticsRole;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../shared/mentions/agent_identity_provider.dart';
+import '../../shared/mentions/mention_tags.dart';
 import '../../shared/relay/relay.dart';
 import '../../shared/theme/theme.dart';
 import '../../shared/utils/string_utils.dart';
 import '../../shared/widgets/avatar_image.dart';
+import '../../shared/widgets/anchored_popover_menu.dart';
 import '../../shared/widgets/buzz_loading_indicator.dart';
 import '../../shared/widgets/frosted_app_bar.dart';
 import '../../shared/widgets/frosted_scaffold.dart';
@@ -20,8 +22,8 @@ import '../channels/channel_detail_page.dart';
 import '../channels/channels_provider.dart';
 import '../channels/dm_channel_labels.dart';
 import '../channels/message_content.dart';
-import '../channels/read_state/read_state_format.dart';
-import '../channels/read_state/read_state_provider.dart';
+import '../../shared/read_state/read_state_format.dart';
+import '../../shared/read_state/read_state_provider.dart';
 import '../profile/user_cache_provider.dart';
 import '../profile/user_profile.dart';
 import 'activity_provider.dart';
@@ -34,8 +36,19 @@ import 'reminders_provider.dart';
 part 'activity_page/header_actions.dart';
 part 'activity_page/inbox_row.dart';
 part 'activity_page/lists.dart';
-part 'activity_page/popover_menu.dart';
 part 'activity_page/status_views.dart';
+
+EdgeInsets _activityScrollPadding(
+  BuildContext context, {
+  double horizontal = 0,
+  double top = Grid.xxs,
+  double bottom = Grid.xxs,
+}) => EdgeInsets.fromLTRB(
+  horizontal,
+  top,
+  horizontal,
+  MediaQuery.paddingOf(context).bottom + bottom,
+);
 
 /// Conversation-oriented Activity inbox.
 ///
@@ -89,8 +102,16 @@ class ActivityPage extends HookConsumerWidget {
     ];
 
     // Preload sender profiles for visible rows.
-    final pubkeys = visibleItems.map((i) => i.item.pubkey).toSet().toList();
-    ref.read(userCacheProvider.notifier).preload(pubkeys);
+    final preloadPubkeys = {
+      for (final item in visibleItems) item.item.pubkey.toLowerCase(),
+      for (final item in visibleItems)
+        ...mentionedPubkeysFromTags(item.item.tags),
+    }.toList()..sort();
+    final preloadPubkeysKey = preloadPubkeys.join('\u0000');
+    useEffect(() {
+      ref.read(userCacheProvider.notifier).preload(preloadPubkeys);
+      return null;
+    }, [preloadPubkeysKey]);
 
     final unreadVisibleCount = visibleItems.where((i) => !isDone(i)).length;
 
@@ -256,7 +277,7 @@ class ActivityPage extends HookConsumerWidget {
       body = RefreshIndicator(
         onRefresh: refresh,
         child: ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: Grid.xxs),
+          padding: _activityScrollPadding(context),
           itemCount: visibleItems.length,
           itemBuilder: (context, index) {
             final item = visibleItems[index];
@@ -268,6 +289,7 @@ class ActivityPage extends HookConsumerWidget {
               children: [
                 if (index == newBoundaryIndex) const _NewBoundaryDivider(),
                 _InboxRow(
+                  key: ValueKey(item.id),
                   item: item,
                   channel: channel,
                   currentPubkey: myPk,
@@ -284,6 +306,7 @@ class ActivityPage extends HookConsumerWidget {
     }
 
     return FrostedScaffold(
+      backgroundColor: Colors.transparent,
       appBar: FrostedAppBar(
         gradient: context.appColors.topSectionGradient,
         automaticallyImplyLeading: false,
@@ -309,7 +332,9 @@ class ActivityPage extends HookConsumerWidget {
         ],
       ),
       body: SafeArea(
+        key: const ValueKey('activity-content-safe-area'),
         top: false,
+        bottom: false,
         child: Padding(
           padding: EdgeInsets.only(
             top: frostedAppBarHeight(context, titleStyle: headerTitleStyle),
