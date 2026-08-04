@@ -37,6 +37,13 @@
       "name": "Agent-managed profiles",
       "description": "Let agents manage their own relay name and avatar instead of restoring the desktop copy",
       "platforms": ["desktop"]
+    },
+    {
+      "id": "spine",
+      "name": "Spine",
+      "description": "Channel index rail: key threads, decisions, media and links at a glance",
+      "platforms": ["desktop"],
+      "defaultEnabled": true
     }
   ]
 }

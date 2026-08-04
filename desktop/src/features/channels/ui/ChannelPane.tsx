@@ -58,6 +58,7 @@ import { useChannelIntro } from "@/features/channels/ui/useChannelIntro";
 import type { ChannelPaneProps } from "@/features/channels/ui/ChannelPane.types";
 import * as agentSessionSelection from "@/features/channels/ui/agentSessionSelection";
 import { usePrepareDmSendChannel } from "@/features/channels/ui/usePrepareDmSendChannel";
+import { ChannelSpineStrip } from "@/features/spine/ui/ChannelSpineStrip";
 import { Button } from "@/shared/ui/button";
 import { buildMainTimelineEntries } from "@/features/messages/lib/threadPanel";
 import { useRenderScopedReactionHydration } from "@/features/messages/lib/useRenderScopedReactionHydration";
@@ -630,6 +631,10 @@ export const ChannelPane = React.memo(function ChannelPane({
               />
             </div>
           ) : null}
+          <ChannelSpineStrip
+            channelId={activeChannelId}
+            topClassName={channelChrome.top}
+          />
           <MessageTimeline
             ref={messageTimelineRef}
             channelId={activeChannel?.id}

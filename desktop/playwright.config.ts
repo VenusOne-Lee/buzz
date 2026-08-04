@@ -22,6 +22,7 @@ export default defineConfig({
         "**/smoke.spec.ts",
         "**/attention.spec.ts",
         "**/catchup.spec.ts",
+        "**/spine.spec.ts",
         "**/onboarding-docked-cta-screenshots.spec.ts",
         "**/identity-key-help.spec.ts",
         "**/key-import-reveal.spec.ts",
