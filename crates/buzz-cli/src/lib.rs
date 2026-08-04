@@ -236,6 +236,9 @@ enum Cmd {
     /// Community moderation — reports queue, bans, timeouts, audit trail
     #[command(subcommand)]
     Moderation(ModerationCmd),
+    /// Publish the Spine emitted per-channel index (kind:30023)
+    #[command(subcommand)]
+    Spine(commands::spine::SpineCmd),
 }
 
 #[derive(Clone, Copy, clap::ValueEnum)]
@@ -1801,6 +1804,7 @@ async fn run(cli: Cli) -> Result<(), CliError> {
         Cmd::Upload(sub) => commands::upload::dispatch(sub, &client).await,
         Cmd::Mem(sub) => commands::mem::dispatch(sub, &client).await,
         Cmd::Moderation(sub) => commands::moderation::dispatch(sub, &client, &cli.format).await,
+        Cmd::Spine(sub) => commands::spine::dispatch(sub, &client).await,
         Cmd::Pack(_) => unreachable!("handled above"),
     }
 }

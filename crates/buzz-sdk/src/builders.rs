@@ -9,7 +9,7 @@ use buzz_core::{
         KIND_DM_ADD_MEMBER, KIND_DM_OPEN, KIND_EMOJI_SET, KIND_GIT_ISSUE, KIND_GIT_PATCH,
         KIND_GIT_PR_UPDATE, KIND_GIT_PULL_REQUEST, KIND_GIT_REPO_ANNOUNCEMENT,
         KIND_GIT_STATUS_CLOSED, KIND_GIT_STATUS_DRAFT, KIND_GIT_STATUS_MERGED,
-        KIND_GIT_STATUS_OPEN, KIND_IA_ARCHIVE_REQUEST, KIND_IA_UNARCHIVE_REQUEST,
+        KIND_GIT_STATUS_OPEN, KIND_IA_ARCHIVE_REQUEST, KIND_IA_UNARCHIVE_REQUEST, KIND_LONG_FORM,
         KIND_MODERATION_BAN, KIND_MODERATION_RESOLVE_REPORT, KIND_MODERATION_TIMEOUT,
         KIND_MODERATION_UNBAN, KIND_MODERATION_UNTIMEOUT, KIND_PRESENCE_UPDATE, KIND_USER_STATUS,
         KIND_WORKFLOW_DEF, KIND_WORKFLOW_TRIGGER,
@@ -959,6 +959,23 @@ pub fn build_repo_announcement_with_tags(
     tags.insert(0, tag(&["d", repo_id])?);
 
     Ok(EventBuilder::new(Kind::Custom(KIND_GIT_REPO_ANNOUNCEMENT as u16), content).tags(tags))
+}
+
+/// Build a Spine emitted per-channel index event (kind:30023, NIP-23/NIP-33).
+///
+/// Publishes the channel's digest index as a parameterized replaceable event:
+/// `d = channel-digest:<channel-uuid>` keys the replacement, `h` scopes it to
+/// the channel (NIP-29), and `client = spine-emitter` identifies the single
+/// emitter identity. `content` is the JSON index body; publishing again for
+/// the same channel replaces the previous index on the relay.
+pub fn build_spine_index(channel_id: &Uuid, content: &str) -> Result<EventBuilder, SdkError> {
+    let channel = channel_id.to_string();
+    let tags = vec![
+        tag(&["d", &format!("channel-digest:{channel}")])?,
+        tag(&["h", &channel])?,
+        tag(&["client", "spine-emitter"])?,
+    ];
+    Ok(EventBuilder::new(Kind::Custom(KIND_LONG_FORM as u16), content).tags(tags))
 }
 
 /// Repository coordinate — owner pubkey + `d`-tag identifier.
@@ -2940,6 +2957,21 @@ mod tests {
         assert_eq!(vals.len(), 2);
         assert_eq!(vals[0], "https://relay.example.com/git/abc/multi-clone");
         assert_eq!(vals[1], "ssh://git@github.com/org/multi-clone.git");
+    }
+
+    #[test]
+    fn spine_index_tag_construction() {
+        let channel = Uuid::parse_str("11111111-1111-4111-8111-111111111111").unwrap();
+        let ev = sign(build_spine_index(&channel, r#"{"version":1}"#).unwrap());
+        assert_eq!(ev.kind.as_u16(), 30023);
+        assert_eq!(ev.content, r#"{"version":1}"#);
+        assert!(has_tag(
+            &ev,
+            "d",
+            "channel-digest:11111111-1111-4111-8111-111111111111"
+        ));
+        assert!(has_tag(&ev, "h", "11111111-1111-4111-8111-111111111111"));
+        assert!(has_tag(&ev, "client", "spine-emitter"));
     }
 
     #[test]
