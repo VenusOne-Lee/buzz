@@ -29,6 +29,8 @@ mod stop;
 pub(crate) use stop::managed_agent_runtime_keys;
 pub use stop::{stop_managed_agent_process, stop_managed_agent_workspace_pair};
 
+mod client_only_mode;
+
 mod sweep;
 pub(crate) use sweep::sweep_untracked_bundle_harnesses;
 
@@ -433,17 +435,6 @@ pub(crate) fn configure_runtime_cli(
     }
 }
 
-/// Returns `Some(error)` when `client_only_mode` is set, preventing spawn.
-/// Matches the `spawn_key_refusal` pattern so both are called identically at
-/// the top of `spawn_agent_child`.
-fn client_only_mode_refusal(
-    global: &crate::managed_agents::GlobalAgentConfig,
-) -> Option<String> {
-    global.client_only_mode.then(|| {
-        "client_only_mode is enabled: this Desktop instance does not run local agents".to_owned()
-    })
-}
-
 /// Spawn an agent process without holding any locks on records or runtimes.
 /// Returns the child process and log path on success. The caller is responsible
 /// for updating `ManagedAgentRecord` fields and inserting into the runtimes map.
@@ -457,12 +448,7 @@ pub fn spawn_agent_child(
     lazy: bool,
     owner_hex: Option<&str>,
 ) -> Result<crate::managed_agents::ManagedAgentProcess, String> {
-    // Load global config once — needed for the client_only_mode gate below and
-    // reused for model/provider fallback and env-var merge at spawn time.
-    let global = crate::managed_agents::load_global_agent_config(app).unwrap_or_default();
-    if let Some(error) = client_only_mode_refusal(&global) {
-        return Err(error);
-    }
+    let global = client_only_mode::load_global_config_or_refuse(app)?;
     if let Some(error) = spawn_key_refusal(record) {
         return Err(error);
     }
