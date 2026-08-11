@@ -1,10 +1,12 @@
 import {
+  AlertTriangle,
   CheckCheck,
   CheckCircle2,
   Flag,
   GitPullRequest,
   MessageCircleQuestion,
   Paperclip,
+  Target,
 } from "lucide-react";
 import { useState } from "react";
 import type { MinimapEntry } from "@/features/spine/types";
@@ -24,6 +26,12 @@ const CLASS_ICONS: Record<
   milestone: Flag,
   resolved: CheckCheck,
   answer: MessageCircleQuestion,
+  // goal/question/blocker are Goal Threads marker classes (see
+  // @/features/goals); the thread minimap doesn't render goal ledger
+  // entries in P1, these exist to keep this Record exhaustive.
+  goal: Target,
+  question: MessageCircleQuestion,
+  blocker: AlertTriangle,
   ask: MessageCircleQuestion,
   media: Paperclip,
   artifact: GitPullRequest,

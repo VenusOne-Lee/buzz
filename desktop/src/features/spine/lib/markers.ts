@@ -8,10 +8,13 @@ import type { RelayEvent } from "@/shared/api/types";
 /**
  * Author-declared marker convention (Spine Layer 1).
  *
- * A marker is a line beginning with `Decision:`, `Milestone:`, `Resolved:`
- * or `Answer:` (case-sensitive), optionally wrapped in markdown bold
- * (`**Decision:**`) and/or preceded by a list bullet (`- `). Lines inside
- * fenced code blocks never declare markers.
+ * A marker is a line beginning with `Decision:`, `Milestone:`, `Resolved:`,
+ * `Answer:`, `Goal:`, `Question:` or `Blocker:` (case-sensitive), optionally
+ * wrapped in markdown bold (`**Decision:**`) and/or preceded by a list
+ * bullet (`- `). Lines inside fenced code blocks never declare markers.
+ *
+ * `Goal:`, `Question:` and `Blocker:` are Goal Threads additions (see
+ * `@/features/goals`) — same convention, same parser, no separate grammar.
  */
 
 const MARKER_CLASS_BY_PREFIX: Record<string, MarkerClass> = {
@@ -19,6 +22,9 @@ const MARKER_CLASS_BY_PREFIX: Record<string, MarkerClass> = {
   Milestone: "milestone",
   Resolved: "resolved",
   Answer: "answer",
+  Goal: "goal",
+  Question: "question",
+  Blocker: "blocker",
 };
 
 /**
@@ -27,7 +33,7 @@ const MARKER_CLASS_BY_PREFIX: Record<string, MarkerClass> = {
  * enforced by the alternation itself — no `i` flag.
  */
 const MARKER_LINE_RE =
-  /^\s*(?:-\s+)?(?:\*\*)?(Decision|Milestone|Resolved|Answer):(?:\*\*)?\s*(.*)$/;
+  /^\s*(?:-\s+)?(?:\*\*)?(Decision|Milestone|Resolved|Answer|Goal|Question|Blocker):(?:\*\*)?\s*(.*)$/;
 
 const FENCE_RE = /^\s*(?:```|~~~)/;
 

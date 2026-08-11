@@ -44,6 +44,24 @@ const MARKER_BADGES: Record<MarkerClass, { label: string; className: string }> =
       label: "Answer",
       className: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
     },
+    // goal/question/blocker are Goal Threads marker classes (see
+    // @/features/goals). Spine's own lanes never select them — decisions
+    // filters decision|resolved, questions filters answer — so these three
+    // exist only to keep this Record exhaustive over MarkerClass; if the
+    // rail ever surfaces a raw marker of one of these classes, it renders
+    // with a badge rather than crashing on a missing lookup.
+    goal: {
+      label: "Goal",
+      className: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
+    },
+    question: {
+      label: "Question",
+      className: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
+    },
+    blocker: {
+      label: "Blocker",
+      className: "bg-red-500/15 text-red-600 dark:text-red-400",
+    },
   };
 
 const cardClassName =

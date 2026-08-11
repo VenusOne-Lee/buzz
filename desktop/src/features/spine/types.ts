@@ -20,8 +20,24 @@ export type SpineLens =
   | "media"
   | "links";
 
-/** Author-declared marker classes, parsed from message content (Layer 1). */
-export type MarkerClass = "decision" | "milestone" | "resolved" | "answer";
+/**
+ * Author-declared marker classes, parsed from message content (Layer 1).
+ *
+ * `question` and `blocker` and `goal` extend the original Spine four
+ * (decision/milestone/resolved/answer) for Goal Threads (see
+ * `@/features/goals`): `goal` declares a thread as a Goal Thread, `question`
+ * and `blocker` populate the goal ledger's Open questions and Blockers
+ * lanes. Spine's own lenses are unaffected — they filter by the classes they
+ * already know about.
+ */
+export type MarkerClass =
+  | "decision"
+  | "milestone"
+  | "resolved"
+  | "answer"
+  | "question"
+  | "blocker"
+  | "goal";
 
 export type SpineMarker = {
   class: MarkerClass;
