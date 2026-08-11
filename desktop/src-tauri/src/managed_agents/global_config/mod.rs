@@ -70,6 +70,12 @@ pub struct GlobalAgentConfig {
     /// Preferred ACP runtime for definitions without an explicit runtime.
     #[serde(default)]
     pub preferred_runtime: Option<String>,
+
+    /// When true this Desktop acts as a pure relay client: no local agent
+    /// process is ever spawned, regardless of per-agent or other settings.
+    /// Prevents accidental double-running when agents live on a remote fleet.
+    #[serde(default)]
+    pub client_only_mode: bool,
 }
 
 /// Validate a `GlobalAgentConfig` before persisting it.

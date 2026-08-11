@@ -433,6 +433,17 @@ pub(crate) fn configure_runtime_cli(
     }
 }
 
+/// Returns `Some(error)` when `client_only_mode` is set, preventing spawn.
+/// Matches the `spawn_key_refusal` pattern so both are called identically at
+/// the top of `spawn_agent_child`.
+fn client_only_mode_refusal(
+    global: &crate::managed_agents::GlobalAgentConfig,
+) -> Option<String> {
+    global.client_only_mode.then(|| {
+        "client_only_mode is enabled: this Desktop instance does not run local agents".to_owned()
+    })
+}
+
 /// Spawn an agent process without holding any locks on records or runtimes.
 /// Returns the child process and log path on success. The caller is responsible
 /// for updating `ManagedAgentRecord` fields and inserting into the runtimes map.
@@ -446,6 +457,12 @@ pub fn spawn_agent_child(
     lazy: bool,
     owner_hex: Option<&str>,
 ) -> Result<crate::managed_agents::ManagedAgentProcess, String> {
+    // Load global config once — needed for the client_only_mode gate below and
+    // reused for model/provider fallback and env-var merge at spawn time.
+    let global = crate::managed_agents::load_global_agent_config(app).unwrap_or_default();
+    if let Some(error) = client_only_mode_refusal(&global) {
+        return Err(error);
+    }
     if let Some(error) = spawn_key_refusal(record) {
         return Err(error);
     }
@@ -457,9 +474,6 @@ pub fn spawn_agent_child(
     // frozen record snapshot. Mirrors the model resolution below.
     let personas = super::load_personas(app).unwrap_or_default();
     let teams = super::load_teams(app).unwrap_or_default();
-    // Load global config once; used for runtime_metadata_env_vars (model/provider fallback)
-    // and for the env-var merge at spawn time.
-    let global = crate::managed_agents::load_global_agent_config(app).unwrap_or_default();
 
     // Resolve model/provider/prompt ONCE, here, at the shared spawn boundary —
     // the single source both the env writes below and the spawn-config snapshot

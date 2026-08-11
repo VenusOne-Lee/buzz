@@ -68,6 +68,7 @@ export const EMPTY_GLOBAL_CONFIG: GlobalAgentConfig = {
   provider: null,
   model: null,
   preferred_runtime: null,
+  client_only_mode: false,
 };
 
 const BAKED_STRUCTURED_KEYS = new Set([

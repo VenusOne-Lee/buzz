@@ -10,6 +10,7 @@
 import { AlertCircle, Check, Loader } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import * as React from "react";
+import { Switch } from "@/shared/ui/switch";
 
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -274,6 +275,24 @@ export function AgentDefaultsEditor({
         </div>
       ) : (
         <>
+          <div className="flex items-center justify-between gap-4 rounded-md border px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">
+                Cloud fleet mode
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                When on, this Desktop is a pure relay client — no local agent
+                processes start, even on reopen. Use this when your agents run
+                on a remote server.
+              </p>
+            </div>
+            <Switch
+              checked={config.client_only_mode ?? false}
+              onCheckedChange={(checked) =>
+                handleConfigChange({ ...config, client_only_mode: checked })
+              }
+            />
+          </div>
           <div className="space-y-1.5">
             <label
               className="text-sm font-medium text-foreground"

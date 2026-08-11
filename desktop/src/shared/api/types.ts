@@ -1012,6 +1012,11 @@ export type GlobalAgentConfig = {
   model: string | null;
   /** Preferred ACP runtime for agents without a persona-specific runtime. */
   preferred_runtime: string | null;
+  /**
+   * When true this Desktop acts as a pure relay client: no local agent process
+   * is ever spawned. Prevents double-running when agents live on a remote fleet.
+   */
+  client_only_mode?: boolean;
 };
 
 /**

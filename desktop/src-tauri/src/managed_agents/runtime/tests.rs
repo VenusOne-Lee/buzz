@@ -1,5 +1,22 @@
 use crate::managed_agents::known_acp_runtime;
 
+// ── client_only_mode_refusal tests ──────────────────────────────────────
+
+#[test]
+fn client_only_mode_off_does_not_refuse() {
+    let global = crate::managed_agents::GlobalAgentConfig::default();
+    assert!(super::client_only_mode_refusal(&global).is_none());
+}
+
+#[test]
+fn client_only_mode_on_refuses_immediately() {
+    let global = crate::managed_agents::GlobalAgentConfig {
+        client_only_mode: true,
+        ..Default::default()
+    };
+    assert!(super::client_only_mode_refusal(&global).is_some());
+}
+
 // ── desktop binary name tests ───────────────────────────────────────────
 
 #[test]

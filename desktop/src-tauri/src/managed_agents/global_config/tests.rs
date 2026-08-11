@@ -267,6 +267,7 @@ fn roundtrip_serialization() {
         provider: Some("anthropic".to_string()),
         model: Some("claude-opus-4".to_string()),
         preferred_runtime: Some("claude".to_string()),
+        client_only_mode: false,
     };
     let json = serde_json::to_string(&config).expect("serialize");
     let back: GlobalAgentConfig = serde_json::from_str(&json).expect("deserialize");
@@ -592,6 +593,7 @@ fn populated_global_config_round_trips() {
         provider: Some("anthropic".to_string()),
         model: Some("claude-opus-4-5".to_string()),
         preferred_runtime: None,
+        client_only_mode: false,
     };
     let json = serde_json::to_string(&original).expect("serialization must not fail");
     let decoded: GlobalAgentConfig =
