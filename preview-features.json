@@ -44,6 +44,12 @@
       "description": "Channel index rail: key threads, decisions, media and links at a glance",
       "platforms": ["desktop"],
       "defaultEnabled": true
+    },
+    {
+      "id": "goals",
+      "name": "Goal Threads",
+      "description": "Pin a thread's outcome and track its decisions, open questions and blockers",
+      "platforms": ["desktop"]
     }
   ]
 }

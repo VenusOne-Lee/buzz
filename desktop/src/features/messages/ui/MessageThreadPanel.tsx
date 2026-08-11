@@ -2,6 +2,7 @@ import * as React from "react";
 import { ArrowDown } from "lucide-react";
 
 import { useKnownAgentPubkeys } from "@/features/agents/useKnownAgentPubkeys";
+import { GoalPanel } from "@/features/goals/ui/GoalPanel";
 import { HuddleTranscriptIntro } from "@/features/huddle/components/HuddleTranscriptIntro";
 import { orderMentionPubkeysByText } from "@/features/messages/lib/orderMentionPubkeys";
 import { normalizePubkey } from "@/shared/lib/pubkey";
@@ -49,6 +50,7 @@ import { TypingIndicatorRow } from "./TypingIndicatorRow";
 import { UnreadDivider } from "./UnreadDivider";
 import { useComposerHeightPadding } from "./useComposerHeightPadding";
 import { useAnchoredScroll } from "./useAnchoredScroll";
+import { useThreadGoalPanel } from "./useThreadGoalPanel";
 import { selectDeferredListRenderState } from "@/features/messages/lib/timelineSnapshot";
 
 type MessageThreadPanelProps = ThreadPanelLayoutProps & {
@@ -374,6 +376,17 @@ export function MessageThreadPanel({
     () => deferredThreadReplies.map((entry) => entry.message),
     [deferredThreadReplies],
   );
+  // Goal Threads (P1): derive the projection from the same root/reply data
+  // already loaded for the transcript above — no extra fetch. See
+  // useThreadGoalPanel for the TimelineMessage -> RelayEvent field rename.
+  const { goalProjection, handleOpenGoalSource, goalPanelProfileNameFor } =
+    useThreadGoalPanel({
+      threadHead,
+      threadMessages,
+      isHuddleTranscript,
+      profiles,
+      threadBodyRef,
+    });
   const shouldShowThreadBranchGuides = React.useMemo(
     () => hasNestedThreadBranches(deferredThreadReplies),
     [deferredThreadReplies],
@@ -567,6 +580,14 @@ export function MessageThreadPanel({
           hasConstrainedColumn ? { maxWidth: columnMaxWidthPx } : undefined
         }
       >
+        {goalProjection ? (
+          <GoalPanel
+            onOpenSource={handleOpenGoalSource}
+            profileNameFor={goalPanelProfileNameFor}
+            projection={goalProjection}
+          />
+        ) : null}
+
         {isHuddleTranscript ? (
           <div className={cn(THREAD_PANEL_MESSAGE_GUTTER_CLASS, "pb-2 pt-4")}>
             <HuddleTranscriptIntro />

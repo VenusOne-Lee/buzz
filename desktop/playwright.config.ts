@@ -23,6 +23,7 @@ export default defineConfig({
         "**/attention.spec.ts",
         "**/catchup.spec.ts",
         "**/spine.spec.ts",
+        "**/goals.spec.ts",
         "**/onboarding-docked-cta-screenshots.spec.ts",
         "**/identity-key-help.spec.ts",
         "**/key-import-reveal.spec.ts",
