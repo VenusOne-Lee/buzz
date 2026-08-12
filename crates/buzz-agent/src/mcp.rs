@@ -488,11 +488,7 @@ impl McpRegistry {
     ) {
         let current = server.client.load_full();
         match &*current {
-            ClientState::Healthy {
-                client,
-                pid,
-                tools,
-            } if Arc::ptr_eq(client, failed_client) => {
+            ClientState::Healthy { client, pid, tools } if Arc::ptr_eq(client, failed_client) => {
                 if let Some(p) = *pid {
                     kill_process(p, &server.name, "call_failed");
                 }
@@ -878,10 +874,7 @@ fn kill_process(pid: u32, name: &str, stage: &str) {
     use nix::sys::signal::{kill, Signal};
     use nix::unistd::Pid;
     let result = kill(Pid::from_raw(pid as i32), Signal::SIGKILL);
-    tracing::info!(
-        "kill MCP {name} ({stage}) pid={pid} ok={}",
-        result.is_ok()
-    );
+    tracing::info!("kill MCP {name} ({stage}) pid={pid} ok={}", result.is_ok());
 }
 #[cfg(not(unix))]
 fn kill_process(_pid: u32, name: &str, stage: &str) {
