@@ -1,0 +1,1915 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buzz One — Team Table</title>
+<style>
+/* =========================================================================
+   BUZZ ONE — "Team Table" design system
+   A deliberately single, committed LIGHT visual world (the Team Table design
+   contract forbids a dark-mode language for this initial channel experience).
+   Every color/background is painted explicitly so the page holds on any host
+   ground. Dark mode is intentionally out of scope here — a choice, not an omission.
+   ========================================================================= */
+
+:root{
+  /* Ground + surfaces */
+  --surface:#FCFBF8;      /* app + page ground (warm off-white) */
+  --raised:#FFFFFF;       /* cards, composer, work objects, panels */
+  --rail:#F6F4EF;         /* left rail / sunken surface */
+  --rail-hover:#EFEDE6;   /* hover on rail rows */
+  --context:#FAF9F5;      /* right context pane */
+
+  /* Ink */
+  --ink:#1C1E1B;          /* primary text */
+  --muted:#74766F;        /* secondary text */
+  --faint:#9C9E94;        /* timestamps, tertiary */
+
+  /* Lines */
+  --divider:#E9E8E3;      /* hairline dividers */
+  --border:#E3E1D9;       /* card / control borders */
+  --border-strong:#D7D5CB;
+
+  /* Collaboration accent (forest) — the single accent */
+  --forest:#075B43;       /* primary action, chosen-state */
+  --forest-ink:#0B6B51;   /* links, focus, hover */
+  --forest-tint:#EAF1EC;  /* selected channel fill, subtle accent */
+  --forest-tint-2:#DBE9E0;/* stronger accent fill */
+  --forest-line:#BFD6C8;
+
+  /* Consequence (orange) — material risk ONLY, never routine */
+  --warn:#D97706;
+  --warn-ink:#B45309;
+  --warn-tint:#FCEFDA;
+  --warn-line:#F0CE9B;
+
+  /* Status / presence */
+  --ok:#1E9E6A;           /* active presence, success */
+  --ai:#5F6159;           /* AI marker ink */
+  --ai-bg:#EDEBE4;        /* AI marker fill */
+
+  /* Elevation */
+  --shadow-sm:0 1px 2px rgb(28 30 27 / .04), 0 1px 3px rgb(28 30 27 / .05);
+  --shadow-md:0 2px 8px -2px rgb(28 30 27 / .08), 0 10px 26px -12px rgb(28 30 27 / .14);
+  --shadow-pane:-1px 0 0 0 var(--border), -18px 0 34px -22px rgb(28 30 27 / .22);
+
+  /* Shape */
+  --r:12px; --r-sm:8px; --r-lg:16px; --r-xl:22px;
+
+  /* Type */
+  --sans:"Inter","Inter Variable",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Menlo","Consolas",monospace;
+
+  --measure:66ch;
+  --page:1160px;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--surface);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  font-feature-settings:"cv05" 1,"ss01" 1;
+}
+h1,h2,h3,h4,p,figure,ul,ol{margin:0}
+ul,ol{padding:0;list-style:none}
+a{color:var(--forest-ink);text-decoration:none}
+a:hover{text-decoration:underline}
+img,svg{display:block;max-width:100%}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--forest-ink);outline-offset:2px;border-radius:4px}
+::selection{background:var(--forest-tint-2)}
+
+/* ---- Editorial layer -------------------------------------------------- */
+.wrap{max-width:var(--page);margin-inline:auto;padding-inline:28px}
+.eyebrow{
+  font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--forest);display:inline-flex;gap:.6em;align-items:center;
+}
+.eyebrow::before{content:"";width:22px;height:1px;background:var(--forest);opacity:.5}
+.eyebrow--plain::before{display:none}
+.display{
+  font-size:clamp(30px,4.6vw,50px);line-height:1.04;letter-spacing:-.022em;
+  font-weight:680;text-wrap:balance;
+}
+.h2{font-size:clamp(23px,3vw,32px);line-height:1.1;letter-spacing:-.02em;font-weight:660;text-wrap:balance}
+.h3{font-size:19px;line-height:1.25;letter-spacing:-.01em;font-weight:640}
+.lede{font-size:19px;line-height:1.62;color:#3a3c37;max-width:var(--measure);text-wrap:pretty}
+.prose{max-width:var(--measure);color:#34362f}
+.prose p+p{margin-top:1em}
+.small{font-size:14px}
+.muted{color:var(--muted)}
+.faint{color:var(--faint)}
+.mono{font-family:var(--mono)}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* section rhythm */
+.section{padding-block:clamp(56px,8vw,104px);border-top:1px solid var(--divider);scroll-margin-top:80px}
+.section--flush{border-top:0}
+.section__head{max-width:760px;display:flex;flex-direction:column;gap:16px}
+.section__head .lede{margin-top:2px}
+.leadgrid{display:grid;grid-template-columns:1fr;gap:18px}
+
+/* ---- Top bar ---------------------------------------------------------- */
+.topbar{
+  position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--surface) 86%,transparent);
+  backdrop-filter:saturate(1.1) blur(10px);border-bottom:1px solid var(--divider);
+}
+.topbar__in{max-width:var(--page);margin-inline:auto;padding:12px 28px;display:flex;align-items:center;gap:20px}
+.brand{display:flex;align-items:center;gap:11px;font-weight:660;letter-spacing:-.01em}
+.brand__mark{width:26px;height:26px;border-radius:8px;background:var(--forest);position:relative;flex:none;box-shadow:var(--shadow-sm)}
+.brand__mark::before,.brand__mark::after{content:"";position:absolute;border-radius:50%;background:#DCEFE4}
+.brand__mark::before{width:7px;height:7px;left:5px;top:6px}
+.brand__mark::after{width:7px;height:7px;right:5px;bottom:6px;background:#8FD3B4}
+.brand__tag{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--border);border-radius:999px;padding:3px 8px}
+.topnav{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
+.topnav a{font-size:13px;color:var(--muted);padding:6px 10px;border-radius:8px}
+.topnav a:hover{color:var(--ink);background:var(--rail);text-decoration:none}
+
+/* ---- Hero ------------------------------------------------------------- */
+.hero{padding-block:clamp(40px,6vw,72px) 0}
+.hero__head{display:flex;flex-direction:column;gap:20px;max-width:820px}
+.hero__meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.toketag{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);
+  border:1px solid var(--border);background:var(--raised);border-radius:999px;padding:5px 11px}
+.toketag .sw{width:11px;height:11px;border-radius:3px;flex:none;box-shadow:inset 0 0 0 1px rgb(0 0 0 /.06)}
+
+/* ---- Specimen frame (holds a product screen) -------------------------- */
+.specimen{margin-top:clamp(28px,4vw,44px)}
+.screen{
+  border:1px solid var(--border);border-radius:var(--r-xl);background:var(--raised);
+  box-shadow:var(--shadow-md);overflow:hidden;
+}
+.screen__bar{
+  display:flex;align-items:center;gap:8px;padding:11px 15px;border-bottom:1px solid var(--divider);
+  background:linear-gradient(var(--surface),var(--surface));
+}
+.screen__dots{display:flex;gap:6px}
+.screen__dots i{width:10px;height:10px;border-radius:50%;background:var(--border-strong)}
+.screen__addr{
+  margin-inline:auto;font-family:var(--mono);font-size:11.5px;color:var(--muted);
+  background:var(--surface);border:1px solid var(--divider);border-radius:999px;padding:3px 14px;
+}
+.screen__caption{display:flex;gap:12px;align-items:baseline;padding:13px 18px;border-top:1px solid var(--divider);
+  color:var(--muted);font-size:13px;background:var(--surface)}
+.screen__caption b{color:var(--ink);font-weight:600}
+.hscroll{overflow-x:auto}
+
+/* =========================================================================
+   THE TEAM TABLE APP SHELL (three panes)
+   ========================================================================= */
+.tt{display:grid;grid-template-columns:250px minmax(0,1fr) 342px;min-width:1010px;
+  background:var(--surface);height:min(78vh,760px)}
+.tt--norail{grid-template-columns:minmax(0,1fr) 342px;min-width:760px}
+.tt--roomonly{grid-template-columns:minmax(0,1fr);min-width:560px}
+.tt--split{grid-template-columns:250px minmax(0,1fr);min-width:760px}
+
+/* ---- Left rail -------------------------------------------------------- */
+.rail{background:var(--rail);border-right:1px solid var(--divider);display:flex;flex-direction:column;min-height:0}
+.rail__top{display:flex;align-items:center;gap:10px;padding:15px 16px 12px}
+.rail__brand{display:flex;align-items:center;gap:9px;font-weight:660;font-size:15.5px}
+.rail__brand .brand__mark{width:22px;height:22px;border-radius:7px}
+.icbtn{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--muted)}
+.icbtn:hover{background:var(--rail-hover);color:var(--ink)}
+.rail__search{margin:2px 12px 10px;display:flex;align-items:center;gap:8px;background:var(--raised);
+  border:1px solid var(--border);border-radius:9px;padding:7px 10px;color:var(--faint);font-size:13.5px}
+.rail__search kbd{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--muted);
+  border:1px solid var(--border);border-radius:5px;padding:1px 5px;background:var(--surface)}
+.rail__scroll{overflow-y:auto;padding:2px 8px 14px;display:flex;flex-direction:column;gap:2px;min-height:0}
+.navrow{display:flex;align-items:center;gap:10px;padding:6px 9px;border-radius:8px;color:#43453f;
+  font-size:14px;cursor:pointer;position:relative}
+.navrow:hover{background:var(--rail-hover)}
+.navrow .ic{width:17px;color:var(--muted);display:grid;place-items:center;flex:none}
+.navrow .count{margin-left:auto;font-size:11px;font-weight:600;color:#fff;background:var(--muted);
+  min-width:18px;height:18px;border-radius:999px;display:grid;place-items:center;padding-inline:5px}
+.navrow .count--soft{color:var(--muted);background:var(--forest-tint);}
+.grouphd{display:flex;align-items:center;gap:6px;padding:14px 9px 4px;color:var(--muted);
+  font-size:12px;font-weight:640;letter-spacing:.02em;text-transform:uppercase}
+.grouphd .add{margin-left:auto;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;color:var(--muted)}
+.grouphd .add:hover{background:var(--rail-hover);color:var(--ink)}
+.chan{display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:8px;color:#43453f;font-size:14px;cursor:pointer}
+.chan:hover{background:var(--rail-hover)}
+.chan .hash{color:var(--faint);font-weight:600}
+.chan .dotmark{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--forest)}
+.chan.is-active{background:var(--forest);color:#fff;font-weight:560}
+.chan.is-active .hash{color:#Bfe6d5}
+.chan.is-active .dotmark{background:#CFF0E0}
+.chan.is-unread{color:var(--ink);font-weight:620}
+
+/* people + agent rows */
+.prow{display:flex;align-items:center;gap:9px;padding:5px 9px;border-radius:8px;cursor:pointer;font-size:14px;color:#43453f}
+.prow:hover{background:var(--rail-hover)}
+.prow__name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow__state{margin-left:auto;font-size:12px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;position:relative}
+.dot--on{background:var(--ok);box-shadow:0 0 0 2px var(--rail)}
+.dot--off{background:transparent;box-shadow:inset 0 0 0 1.6px var(--border-strong)}
+.dot--busy{background:var(--warn)}
+.aimk{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;color:var(--ai);
+  background:var(--ai-bg);border-radius:4px;padding:1px 4px;line-height:1.4}
+
+/* avatars */
+.av{border-radius:50%;display:grid;place-items:center;font-weight:640;flex:none;color:#fff;
+  font-size:12px;box-shadow:inset 0 0 0 1px rgb(0 0 0 /.05);overflow:hidden;background:var(--muted)}
+.av--sm{width:24px;height:24px;font-size:10.5px}
+.av--md{width:36px;height:36px;font-size:13px}
+.av--lg{width:44px;height:44px;font-size:15px}
+.av--agent{border-radius:9px}
+.av--sm.av--agent{border-radius:7px}
+
+/* ---- Center room ------------------------------------------------------ */
+.room{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--surface)}
+.room__hd{display:flex;align-items:center;gap:12px;padding:13px 20px;border-bottom:1px solid var(--divider)}
+.room__title{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:660}
+.room__title .hash{color:var(--faint)}
+.room__title .star{color:var(--faint)}
+.room__sub{color:var(--muted);font-size:13px;margin-top:1px}
+.room__hd .spacer{margin-left:auto}
+.facepile{display:flex;align-items:center}
+.facepile .av{box-shadow:0 0 0 2px var(--surface),inset 0 0 0 1px rgb(0 0 0 /.05);margin-left:-8px}
+.facepile .av:first-child{margin-left:0}
+.facepile .more{margin-left:6px;font-size:12.5px;color:var(--muted);font-weight:600}
+.room__scroll{flex:1;overflow-y:auto;padding:12px 20px 6px;min-height:0}
+.daytag{display:flex;align-items:center;gap:14px;color:var(--faint);font-size:12px;margin:8px 0 14px}
+.daytag::before,.daytag::after{content:"";height:1px;background:var(--divider);flex:1}
+
+/* message */
+.msg{display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;padding:9px 0}
+.msg+.msg{margin-top:2px}
+.msg__head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.msg__author{font-weight:660;font-size:15px}
+.msg__time{font-size:12px;color:var(--faint)}
+.msg__body{font-size:16px;line-height:1.55;color:#25271f;margin-top:2px}
+.msg__body p+p{margin-top:.5em}
+.msg__body a{font-weight:500}
+.emoji{font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",var(--sans)}
+.rxrow{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px;align-items:center}
+.rx{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#3f413b;border:1px solid var(--border);
+  background:var(--raised);border-radius:999px;padding:3px 9px;cursor:pointer;font-variant-numeric:tabular-nums}
+.rx:hover{border-color:var(--border-strong)}
+.rx.is-me{background:var(--forest-tint);border-color:var(--forest-line);color:var(--forest)}
+.rx--add{color:var(--muted);padding:4px 8px}
+.threadlink{display:inline-flex;align-items:center;gap:7px;margin-top:8px;font-size:13px;color:var(--forest-ink);
+  font-weight:560;cursor:pointer}
+.threadlink .avs{display:flex}
+.threadlink .avs .av{margin-left:-6px;box-shadow:0 0 0 2px var(--surface)}
+.threadlink .avs .av:first-child{margin-left:0}
+.chev{transition:transform .18s ease}
+
+/* ---- Work object (bordered, meaningful surface) ----------------------- */
+.wo{border:1px solid var(--border);background:var(--raised);border-radius:var(--r);margin-top:11px;
+  max-width:560px;box-shadow:var(--shadow-sm);overflow:hidden}
+.wo__hd{display:flex;align-items:center;gap:12px;padding:13px 15px}
+.wo__glyph{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:none;
+  background:var(--forest-tint);color:var(--forest);font-size:16px}
+.wo__glyph--sf{background:#E8F1FB;color:#0B6BC2}
+.wo__glyph--gh{background:#ECEBEF;color:#1C1E1B}
+.wo__ttl{font-weight:640;font-size:15px;line-height:1.2}
+.wo__by{font-size:12.5px;color:var(--muted);margin-top:1px}
+.wo__toggle{margin-left:auto;color:var(--muted);display:grid;place-items:center;width:26px;height:26px;border-radius:7px}
+.wo__toggle:hover{background:var(--rail);color:var(--ink)}
+.wo__rows{border-top:1px solid var(--divider);padding:6px 15px 4px;display:grid;
+  grid-template-columns:auto 1fr;gap:2px 18px;align-items:center}
+.wo__k{color:var(--muted);font-size:13px;padding:8px 0}
+.wo__v{font-size:13.5px;padding:8px 0;text-align:left}
+.wo__v.right{justify-self:end;color:var(--muted);font-variant-numeric:tabular-nums}
+.wo__v .link{color:var(--forest-ink);font-weight:560;display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.statusline{display:inline-flex;align-items:center;gap:8px}
+.statusdot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+.statusdot--run{background:var(--forest);animation:pulse 1.6s ease-in-out infinite}
+.statusdot--warn{background:var(--warn)}
+.statusdot--err{background:#C4402E}
+.wo__foot{display:flex;align-items:center;gap:12px;padding:12px 15px;border-top:1px solid var(--divider);
+  background:var(--surface)}
+.wo__foot .grow{margin-left:auto}
+.wo__collapsed{display:none;align-items:center;gap:10px;padding:12px 15px;border-top:1px solid var(--divider);
+  font-size:13.5px;color:#3f413b}
+.wo.is-collapsed .wo__rows,.wo.is-collapsed .wo__foot{display:none}
+.wo.is-collapsed .wo__collapsed{display:flex}
+.wo.is-collapsed .wo__toggle .chev{transform:rotate(-90deg)}
+.wo__collapsed .sep{color:var(--faint)}
+.wo__collapsed .pull{margin-left:auto}
+
+/* ---- Buttons ---------------------------------------------------------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:13.5px;font-weight:600;
+  border-radius:9px;padding:8px 14px;border:1px solid transparent;cursor:pointer;white-space:nowrap;
+  transition:background .14s ease,border-color .14s ease,transform .05s ease}
+.btn:active{transform:translateY(.5px)}
+.btn--primary{background:var(--forest);color:#fff;box-shadow:var(--shadow-sm)}
+.btn--primary:hover{background:#064B37}
+.btn--ghost{border-color:var(--border);color:#3d3f39;background:var(--raised)}
+.btn--ghost:hover{border-color:var(--border-strong);background:var(--surface)}
+.btn--warn{background:var(--warn);color:#fff}
+.btn--warn:hover{background:var(--warn-ink)}
+.btn--warn-ghost{border-color:var(--warn-line);color:var(--warn-ink);background:var(--warn-tint)}
+.btn--warn-ghost:hover{background:#F9E6C9}
+.btn--sm{padding:6px 11px;font-size:12.5px;border-radius:8px}
+.btn--icon{padding:8px;width:34px}
+.kbd{font-family:var(--mono);font-size:10.5px;color:var(--muted);border:1px solid var(--border);
+  border-bottom-width:2px;border-radius:5px;padding:1px 5px;background:var(--raised);line-height:1.5}
+
+/* ---- Composer --------------------------------------------------------- */
+.composer{margin:8px 20px 18px;border:1px solid var(--border);border-radius:var(--r);background:var(--raised);
+  box-shadow:var(--shadow-sm)}
+.composer__tools{display:flex;align-items:center;gap:2px;padding:8px 10px;border-bottom:1px solid var(--divider);color:var(--muted)}
+.composer__tools .tb{width:28px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:13px}
+.composer__tools .tb:hover{background:var(--rail);color:var(--ink)}
+.composer__tools .tb.mono{font-family:var(--mono);font-size:11px}
+.composer__tools .div{width:1px;height:16px;background:var(--divider);margin-inline:5px}
+.composer__field{padding:12px 14px;color:var(--faint);font-size:15px}
+.composer__foot{display:flex;align-items:center;gap:6px;padding:8px 10px}
+.composer__foot .tb{width:30px;height:28px;border-radius:7px;display:grid;place-items:center;color:var(--muted)}
+.composer__foot .tb:hover{background:var(--rail);color:var(--ink)}
+.composer__send{margin-left:auto;display:flex}
+.composer__send .btn--primary{border-radius:9px 0 0 9px;padding-inline:14px}
+.composer__send .split{background:var(--forest);color:#fff;border-radius:0 9px 9px 0;border-left:1px solid #0a6b4f;
+  padding:8px 9px;display:grid;place-items:center}
+
+/* ---- Right context pane ----------------------------------------------- */
+.ctx{background:var(--context);border-left:1px solid var(--divider);display:flex;flex-direction:column;min-height:0}
+.ctx__hd{display:flex;align-items:center;gap:10px;padding:13px 16px 0}
+.ctx__title{font-size:15px;font-weight:660}
+.ctx__sub{font-size:12.5px;color:var(--muted)}
+.ctx__x{margin-left:auto;color:var(--muted);width:26px;height:26px;border-radius:7px;display:grid;place-items:center}
+.ctx__x:hover{background:var(--rail-hover);color:var(--ink)}
+.tabs{display:flex;gap:2px;padding:10px 12px 0;border-bottom:1px solid var(--divider)}
+.tab{font-size:13px;font-weight:560;color:var(--muted);padding:8px 11px;border-radius:8px 8px 0 0;
+  border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab.is-active{color:var(--forest);border-bottom-color:var(--forest)}
+.tab .mini{font-family:var(--mono);font-size:10px;margin-left:6px;color:var(--faint)}
+.ctx__scroll{flex:1;overflow-y:auto;padding:14px 16px;min-height:0}
+.tabpane{display:none}
+.tabpane.is-active{display:block}
+.repliesbar{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12.5px;margin:6px 0 10px}
+.repliesbar::before{content:"";flex:1;height:1px;background:var(--divider)}
+.repliesbar .acts{display:flex;gap:4px}
+.msg--thread{grid-template-columns:34px minmax(0,1fr);gap:10px;padding:8px 0}
+.msg--thread .av{width:34px;height:34px}
+.msg--thread .msg__body{font-size:14.5px}
+.ctx__reply{margin:6px 12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--raised);
+  padding:10px 12px;color:var(--faint);font-size:13.5px;display:flex;align-items:center;gap:8px}
+.ctx__reply .snd{margin-left:auto;width:26px;height:26px;border-radius:7px;background:var(--forest-tint);
+  color:var(--forest);display:grid;place-items:center}
+
+/* ---- Artifact chip ---------------------------------------------------- */
+.artifact{display:flex;align-items:center;gap:11px;border:1px solid var(--border);border-radius:10px;
+  background:var(--raised);padding:9px 11px;max-width:340px;margin-top:8px;cursor:pointer}
+.artifact:hover{border-color:var(--border-strong);box-shadow:var(--shadow-sm)}
+.artifact__ic{width:30px;height:34px;border-radius:6px;background:var(--forest-tint);color:var(--forest);
+  display:grid;place-items:center;font-size:15px;flex:none}
+.artifact__ic--doc{background:#E8F1FB;color:#0B6BC2}
+.artifact__ic--img{background:#F2ECFA;color:#7A4CC0}
+.artifact__ic--data{background:#EAF5EE;color:#0B7A50}
+.artifact__ic--file{background:#F1EFE9;color:#6B6D65}
+.artifact__t{font-size:13.5px;font-weight:600;line-height:1.2}
+.artifact__m{font-size:11.5px;color:var(--muted);margin-top:2px}
+.artifact__go{margin-left:auto;color:var(--faint)}
+
+/* =========================================================================
+   Shared building blocks used across the phase specimens
+   ========================================================================= */
+.panel{border:1px solid var(--border);border-radius:var(--r);background:var(--raised);box-shadow:var(--shadow-sm)}
+.panel__hd{display:flex;align-items:center;gap:11px;padding:13px 16px;border-bottom:1px solid var(--divider)}
+.panel__bd{padding:16px}
+.panel__ft{padding:12px 16px;border-top:1px solid var(--divider);background:var(--surface);display:flex;align-items:center;gap:10px}
+
+.kv{display:grid;grid-template-columns:auto 1fr;gap:9px 16px;align-items:center;font-size:13.5px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+
+.field{display:flex;flex-direction:column;gap:6px}
+.field__l{font-size:12.5px;font-weight:600;color:#43453f}
+.field__h{font-size:12px;color:var(--muted)}
+.input{border:1px solid var(--border);background:var(--raised);border-radius:9px;padding:9px 11px;font-size:14px;color:var(--ink)}
+.input--area{min-height:64px;color:#3a3c37}
+.input.placeholder{color:var(--faint)}
+.select{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--raised);
+  border-radius:9px;padding:9px 11px;font-size:14px;cursor:pointer}
+.select .car{margin-left:auto;color:var(--muted)}
+
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border-radius:999px;
+  padding:3px 9px;border:1px solid var(--border);color:#43453f;background:var(--raised);white-space:nowrap}
+.pill .dt{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.pill--ok{color:var(--forest);background:var(--forest-tint);border-color:var(--forest-line)}
+.pill--ok .dt{background:var(--ok)}
+.pill--warn{color:var(--warn-ink);background:var(--warn-tint);border-color:var(--warn-line)}
+.pill--warn .dt{background:var(--warn)}
+.pill--idle{color:var(--muted)}
+.pill--idle .dt{background:transparent;box-shadow:inset 0 0 0 1.5px var(--border-strong)}
+.pill--model{font-family:var(--mono);font-size:11px;letter-spacing:.01em;background:var(--surface)}
+
+.chiprow{display:flex;flex-wrap:wrap;gap:7px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#43453f;border:1px solid var(--border);
+  background:var(--surface);border-radius:8px;padding:5px 9px}
+.chip .x{color:var(--faint)}
+.chip--on{background:var(--forest-tint);border-color:var(--forest-line);color:var(--forest)}
+
+.segmented{display:inline-flex;background:var(--rail);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px}
+.segmented__i{font-size:12.5px;font-weight:560;color:var(--muted);padding:6px 12px;border-radius:7px;cursor:pointer;white-space:nowrap}
+.segmented__i[aria-selected="true"]{background:var(--raised);color:var(--ink);box-shadow:var(--shadow-sm)}
+.segmented__i.warnsel[aria-selected="true"]{color:var(--warn-ink)}
+
+.toggle{width:38px;height:22px;border-radius:999px;background:var(--border-strong);position:relative;flex:none;cursor:pointer;transition:background .16s}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:var(--shadow-sm);transition:left .16s}
+.toggle.is-on{background:var(--forest)}
+.toggle.is-on::after{left:18px}
+
+.meter{height:8px;border-radius:999px;background:var(--rail);overflow:hidden;border:1px solid var(--border)}
+.meter__fill{height:100%;background:var(--forest);border-radius:999px}
+.meter__fill--warn{background:var(--warn)}
+
+.note{display:flex;gap:10px;font-size:13px;color:#43453f;background:var(--forest-tint);border:1px solid var(--forest-line);
+  border-radius:10px;padding:11px 13px;line-height:1.5}
+.note--warn{background:var(--warn-tint);border-color:var(--warn-line);color:#5c4114}
+.note .ic{flex:none;color:var(--forest)}
+.note--warn .ic{color:var(--warn)}
+
+/* two-up specimen layout */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:16px}
+.captioned{display:flex;flex-direction:column;gap:10px}
+.captioned__c{font-size:13px;color:var(--muted)}
+.captioned__c b{color:var(--ink);font-weight:600}
+.mini-screen{border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--shadow-md);overflow:hidden}
+.mini-screen__bar{display:flex;align-items:center;gap:8px;padding:9px 13px;border-bottom:1px solid var(--divider);background:var(--surface)}
+.mini-screen__bar .lbl{font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+/* decision card */
+.decision{border:1px solid var(--warn-line);background:var(--warn-tint);border-radius:var(--r);
+  max-width:560px;margin-top:11px;overflow:hidden;box-shadow:var(--shadow-sm)}
+.decision__hd{display:flex;align-items:center;gap:10px;padding:12px 15px}
+.decision__badge{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--warn-ink);background:#fff;border:1px solid var(--warn-line);border-radius:6px;padding:2px 7px}
+.decision__ttl{font-weight:660;font-size:14.5px}
+.decision__bd{padding:0 15px 13px}
+.decision__q{font-size:14px;color:#4a3d24;line-height:1.5}
+.decision__meta{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:10px;font-size:12.5px;color:#6b5220}
+.decision__meta b{color:#4a3d24;font-weight:600}
+.decision__choices{display:flex;flex-wrap:wrap;gap:8px;padding:12px 15px;background:#fff;border-top:1px solid var(--warn-line)}
+.decision__reply{margin-left:auto;font-size:12.5px;color:var(--muted);display:inline-flex;align-items:center;gap:6px;align-self:center}
+.decision--resolved{background:var(--surface);border-color:var(--border)}
+.decision--resolved .decision__choices{background:var(--surface);border-color:var(--divider)}
+
+/* activity feed (agent at work) */
+.plan{display:flex;flex-direction:column;gap:2px}
+.plan__i{display:grid;grid-template-columns:22px 1fr;gap:9px;padding:6px 0;font-size:13.5px;align-items:start}
+.plan__i .mk{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;margin-top:2px;flex:none}
+.plan__i .mk--done{background:var(--forest-tint);color:var(--forest)}
+.plan__i .mk--now{background:var(--forest);color:#fff}
+.plan__i .mk--todo{background:var(--rail);color:var(--faint);box-shadow:inset 0 0 0 1.5px var(--border)}
+.plan__i.todo{color:var(--muted)}
+.feed{display:flex;flex-direction:column;gap:0;position:relative;margin-left:4px}
+.feed__i{display:grid;grid-template-columns:16px 1fr;gap:11px;padding:7px 0;font-size:13px;position:relative}
+.feed__i::before{content:"";position:absolute;left:7px;top:0;bottom:0;width:1.5px;background:var(--divider)}
+.feed__i:first-child::before{top:12px}
+.feed__i:last-child::before{bottom:calc(100% - 12px)}
+.feed__i .rt{width:8px;height:8px;border-radius:50%;background:var(--forest);margin-top:5px;z-index:1;box-shadow:0 0 0 3px var(--context)}
+.feed__i .rt--muted{background:var(--border-strong)}
+.feed__t{color:var(--faint);font-family:var(--mono);font-size:11px;margin-top:1px}
+.subtle-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-family:var(--mono)}
+
+/* connector logo marks */
+.logo{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-weight:700;flex:none;font-size:15px}
+.logo--gmail{background:#FCE9E7;color:#D33A2C}
+.logo--github{background:#ECEBEF;color:#1C1E1B}
+.logo--salesforce{background:#E6F1FB;color:#0B84D0}
+.logo--slack{background:#F3E9F1;color:#8A2E63}
+.logo--notion{background:#F0EFEC;color:#1C1E1B}
+.logo--linear{background:#EAEAF6;color:#5B5BD6}
+
+/* computer session */
+.viewport{position:relative;background:#1C1E1B;border-radius:0;aspect-ratio:16/10;overflow:hidden}
+.viewport__chrome{display:flex;align-items:center;gap:8px;padding:8px 11px;background:#26281f}
+.viewport__chrome i{width:9px;height:9px;border-radius:50%;background:#3d3f36}
+.viewport__url{margin-left:6px;font-family:var(--mono);font-size:10.5px;color:#9ea096;background:#1c1e18;
+  border-radius:6px;padding:2px 10px}
+.viewport__body{position:relative;height:calc(100% - 33px);background:#f6f7f4;
+  background-image:linear-gradient(#eef0ea 1px,transparent 1px),linear-gradient(90deg,#eef0ea 1px,transparent 1px);
+  background-size:26px 26px;display:grid;place-items:center;color:#9aa08f;font-size:12px}
+.viewport__live{position:absolute;top:10px;left:10px;display:inline-flex;align-items:center;gap:6px;font-size:11px;
+  font-weight:600;color:#fff;background:rgb(28 30 27 /.72);border-radius:999px;padding:4px 10px;backdrop-filter:blur(4px)}
+.viewport__live .rec{width:8px;height:8px;border-radius:50%;background:#E5484D;animation:pulse 1.4s infinite}
+.viewport__cursor{position:absolute;width:16px;height:16px;left:52%;top:44%;color:#1c1e1b}
+.viewport__stop{position:absolute;bottom:10px;right:10px}
+
+/* command bar */
+.cmdbar{border:1px solid var(--border-strong);border-radius:16px;background:var(--raised);box-shadow:var(--shadow-md);overflow:hidden;max-width:620px}
+.cmdbar__in{display:flex;align-items:center;gap:12px;padding:15px 17px}
+.cmdbar__spark{width:26px;height:26px;border-radius:8px;background:var(--forest);color:#fff;display:grid;place-items:center;flex:none}
+.cmdbar__q{font-size:17px;color:var(--ink)}
+.cmdbar__q .cur{color:var(--faint)}
+.cmdbar__hint{margin-left:auto;font-size:11px}
+.cmdbar__prop{border-top:1px solid var(--divider);padding:13px 17px;background:var(--surface)}
+.proprow{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:center;padding:5px 0;font-size:13.5px}
+.proprow .lb{color:var(--muted);font-size:12.5px}
+
+/* roadmap table */
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r);background:var(--raised)}
+table.rm{border-collapse:collapse;width:100%;min-width:720px;font-size:13.5px}
+table.rm th,table.rm td{text-align:left;padding:12px 15px;border-bottom:1px solid var(--divider);vertical-align:top}
+table.rm thead th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-family:var(--mono);font-weight:600;background:var(--surface)}
+table.rm tbody tr:last-child td{border-bottom:0}
+table.rm .n{font-family:var(--mono);color:var(--forest);font-weight:600}
+table.rm .eff{font-family:var(--mono);font-size:12px;color:var(--muted)}
+table.rm td b{font-weight:640}
+
+/* token swatches */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.swatchcard{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--raised)}
+.swatchcard .chip{border:0;border-radius:0;height:64px;display:block}
+.swatchcard .meta{padding:9px 11px}
+.swatchcard .nm{font-size:12.5px;font-weight:600}
+.swatchcard .hx{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase}
+
+.scalerow{display:flex;align-items:baseline;gap:16px;padding:9px 0;border-bottom:1px solid var(--divider)}
+.scalerow .lbl{font-family:var(--mono);font-size:11px;color:var(--muted);width:120px;flex:none}
+
+/* footer */
+.foot{border-top:1px solid var(--divider);padding-block:40px 60px;color:var(--muted);font-size:13.5px}
+.foot__grid{display:flex;flex-wrap:wrap;gap:28px;justify-content:space-between;align-items:flex-start}
+.foot a{color:var(--forest-ink)}
+
+/* utility */
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);
+  border:1px solid var(--border);border-radius:999px;padding:3px 9px;background:var(--raised)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.hr{height:1px;background:var(--divider);border:0;margin:0}
+.cluster{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.between{display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+}
+
+@media (max-width:900px){
+  .duo,.grid-2{grid-template-columns:1fr}
+  .trio{grid-template-columns:1fr}
+  .topnav{display:none}
+}
+@media (max-width:620px){
+  .wrap{padding-inline:18px}
+  .topbar__in{padding-inline:18px}
+  .lede{font-size:17px}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar__in">
+    <div class="brand"><span class="brand__mark"></span> Buzz One <span class="brand__tag">Team&nbsp;Table</span></div>
+    <nav class="topnav" aria-label="Sections">
+      <a href="#shell">Shell</a>
+      <a href="#phase1">Phase 1</a>
+      <a href="#phase2">Phase 2</a>
+      <a href="#phase3">Phase 3</a>
+      <a href="#phase4">Phase 4</a>
+      <a href="#phase5">Phase 5</a>
+      <a href="#system">System</a>
+      <a href="#roadmap">Roadmap</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ============================ HERO / SHELL ============================ -->
+<section class="section section--flush hero" id="shell">
+  <div class="wrap">
+    <div class="hero__head">
+      <span class="eyebrow">The Buzz One shell · conversation-first</span>
+      <h1 class="display">A workspace where agents are<br>members, not a dashboard.</h1>
+      <p class="lede">Buzz One keeps familiar shared channels and threads as home, and makes agent
+        work a <em>visible, reviewable participant</em> in the room. When an agent researches, drafts,
+        changes data, or needs a decision, that work appears where the people are already collaborating —
+        rendered in the light <b>Team&nbsp;Table</b> language: warm off-white, ink text, a single
+        forest-green collaboration accent, and orange reserved strictly for consequential review.</p>
+      <div class="hero__meta">
+        <span class="toketag"><span class="sw" style="background:#FCFBF8"></span> Surface #FCFBF8</span>
+        <span class="toketag"><span class="sw" style="background:#1C1E1B"></span> Ink #1C1E1B</span>
+        <span class="toketag"><span class="sw" style="background:#075B43"></span> Forest #075B43</span>
+        <span class="toketag"><span class="sw" style="background:#D97706"></span> Review #D97706</span>
+      </div>
+    </div>
+
+    <div class="specimen">
+      <div class="screen">
+        <div class="screen__bar">
+          <span class="screen__dots"><i></i><i></i><i></i></span>
+          <span class="screen__addr">buzz.one / go-to-market</span>
+          <span style="width:52px"></span>
+        </div>
+        <div class="hscroll">
+          <div class="tt">
+            <!-- LEFT RAIL -->
+            <aside class="rail">
+              <div class="rail__top">
+                <div class="rail__brand"><span class="brand__mark"></span> Buzz One</div>
+                <button class="icbtn" title="New message" aria-label="New message">✎</button>
+              </div>
+              <div class="rail__search"><span>⌕</span> Search Buzz One <kbd>⌘K</kbd></div>
+              <div class="rail__scroll">
+                <div class="navrow"><span class="ic">◔</span> Unread <span class="count">6</span></div>
+                <div class="navrow"><span class="ic">❏</span> Threads</div>
+                <div class="navrow"><span class="ic">＠</span> Mentions &amp; reactions</div>
+                <div class="navrow"><span class="ic">✎</span> Drafts <span class="count count--soft">2</span></div>
+                <div class="navrow"><span class="ic">⌸</span> Saved items</div>
+
+                <div class="grouphd">Channels <button class="add" aria-label="Add channel">＋</button></div>
+                <div class="chan"><span class="hash">#</span> announcements</div>
+                <div class="chan is-active"><span class="hash">#</span> go-to-market <span class="dotmark"></span></div>
+                <div class="chan"><span class="hash">#</span> sales-ops</div>
+                <div class="chan"><span class="hash">#</span> product-launch</div>
+                <div class="chan"><span class="hash">#</span> customer-stories</div>
+                <div class="chan"><span class="hash">#</span> random</div>
+
+                <div class="grouphd">Direct messages <button class="add" aria-label="New DM">＋</button></div>
+                <div class="prow"><span class="av av--sm" style="background:#B07A57">MR</span><span class="prow__name">Mika Rivera (you)</span><span class="dot dot--on"></span></div>
+                <div class="prow"><span class="av av--sm" style="background:#5C7A8A">SC</span><span class="prow__name">Sarah Chen</span><span class="dot dot--on"></span></div>
+                <div class="prow"><span class="av av--sm" style="background:#8A6D9E">JP</span><span class="prow__name">Jordan Patel</span><span class="dot dot--off"></span></div>
+                <div class="prow"><span class="av av--sm av--agent" style="background:#0B6B51">Q</span><span class="prow__name">Quill</span><span class="aimk">AI</span><span class="dot dot--on"></span></div>
+                <div class="prow"><span class="av av--sm av--agent" style="background:#4B6572">A</span><span class="prow__name">Atlas</span><span class="aimk">AI</span><span class="dot dot--on"></span></div>
+                <div class="prow"><span class="av av--sm av--agent" style="background:#9A6B4A">D</span><span class="prow__name">Drift</span><span class="aimk">AI</span><span class="dot dot--off"></span></div>
+                <div class="navrow" style="color:var(--muted);font-size:13px">Show more</div>
+
+                <div class="grouphd">Agents <button class="add" aria-label="Add agent">＋</button></div>
+                <div class="prow"><span class="av av--sm av--agent" style="background:#3F7D6A">N</span><span class="prow__name">Nova</span><span class="aimk">AI</span><span class="prow__state">Active</span><span class="dot dot--on"></span></div>
+                <div class="prow"><span class="av av--sm av--agent" style="background:#4B6572">A</span><span class="prow__name">Atlas</span><span class="aimk">AI</span><span class="prow__state">Active</span><span class="dot dot--on"></span></div>
+                <div class="prow"><span class="av av--sm av--agent" style="background:#0B6B51">Q</span><span class="prow__name">Quill</span><span class="aimk">AI</span><span class="prow__state">Idle</span><span class="dot dot--off"></span></div>
+                <div class="prow"><span class="av av--sm av--agent" style="background:#9A6B4A">D</span><span class="prow__name">Drift</span><span class="aimk">AI</span><span class="prow__state">Idle</span><span class="dot dot--off"></span></div>
+                <div class="prow"><span class="av av--sm av--agent" style="background:#8A5A86">P</span><span class="prow__name">Pixel</span><span class="aimk">AI</span><span class="prow__state">Active</span><span class="dot dot--on"></span></div>
+                <div class="prow"><span class="av av--sm av--agent" style="background:#6E7A45">S</span><span class="prow__name">Sage</span><span class="aimk">AI</span><span class="prow__state">Idle</span><span class="dot dot--off"></span></div>
+              </div>
+            </aside>
+
+            <!-- CENTER ROOM -->
+            <section class="room">
+              <header class="room__hd">
+                <div>
+                  <div class="room__title"><span class="hash">#</span> go-to-market <span class="star">☆</span></div>
+                  <div class="room__sub">People and agents working together on our sales launch.</div>
+                </div>
+                <span class="spacer"></span>
+                <div class="facepile">
+                  <span class="av av--sm" style="background:#B07A57">MR</span>
+                  <span class="av av--sm" style="background:#5C7A8A">SC</span>
+                  <span class="av av--sm" style="background:#8A6D9E">JP</span>
+                  <span class="av av--sm av--agent" style="background:#4B6572">A</span>
+                  <span class="more">15</span>
+                </div>
+                <button class="icbtn" title="Add people">＋</button>
+                <button class="icbtn" title="Channel settings">⛭</button>
+              </header>
+
+              <div class="room__scroll">
+                <div class="daytag">Today</div>
+
+                <article class="msg">
+                  <span class="av av--md" style="background:#B07A57">MR</span>
+                  <div>
+                    <div class="msg__head"><span class="msg__author">Mika Rivera</span><span class="msg__time">9:02 AM</span></div>
+                    <div class="msg__body">Morning team! <span class="emoji">👋</span> Let's finalize the list of prospects for our launch outreach. Atlas, can you pull the latest ICP list and flag any high-intent accounts?</div>
+                    <div class="rxrow">
+                      <button class="rx is-me"><span class="emoji">👍</span> 4</button>
+                      <button class="rx"><span class="emoji">🙌</span> 2</button>
+                      <button class="rx rx--add" aria-label="Add reaction">☺ +</button>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="msg">
+                  <span class="av av--md av--agent" style="background:#4B6572">A</span>
+                  <div>
+                    <div class="msg__head"><span class="msg__author">Atlas</span><span class="aimk">AI</span><span class="msg__time">9:04 AM</span></div>
+                    <div class="msg__body">On it. I'll identify accounts that match our ICP and show recent buying signals. I'll post the changes here for review.</div>
+
+                    <!-- WORK OBJECT -->
+                    <div class="wo" id="wo-hero">
+                      <div class="wo__hd">
+                        <span class="wo__glyph wo__glyph--sf">☁</span>
+                        <div>
+                          <div class="wo__ttl">Salesforce lead sync</div>
+                          <div class="wo__by">Created by Atlas · 9:04 AM</div>
+                        </div>
+                        <button class="wo__toggle" data-wo-toggle="wo-hero" aria-label="Collapse work object"><span class="chev">⌄</span></button>
+                      </div>
+                      <div class="wo__rows">
+                        <div class="wo__k">Execution status</div>
+                        <div class="wo__v"><span class="statusline"><span class="statusdot"></span> Completed successfully</span> <span class="faint" style="margin-left:8px">9:06 AM</span></div>
+                        <div class="wo__k">Source</div>
+                        <div class="wo__v">Salesforce · Lead &amp; Account objects <span class="link">↗</span></div>
+                        <div class="wo__k">Summary</div>
+                        <div class="wo__v">142 new leads added · 18 accounts updated</div>
+                        <div class="wo__k">Change preview</div>
+                        <div class="wo__v"><span class="link">View details <span class="chev">⌄</span></span></div>
+                      </div>
+                      <div class="wo__foot">
+                        <button class="btn btn--primary">Review change</button>
+                        <span class="grow"></span>
+                        <span class="faint small">No data written yet · awaiting review</span>
+                      </div>
+                      <div class="wo__collapsed">
+                        <span class="wo__glyph wo__glyph--sf" style="width:22px;height:22px;font-size:12px">☁</span>
+                        <b>Atlas</b> <span class="sep">·</span> Salesforce lead sync <span class="sep">·</span>
+                        <span class="statusline"><span class="statusdot"></span> completed</span> <span class="sep">·</span> 142 leads
+                        <span class="pull"><button class="btn btn--ghost btn--sm">Review change</button></span>
+                      </div>
+                    </div>
+
+                    <div class="rxrow">
+                      <button class="rx"><span class="emoji">👀</span> 3</button>
+                      <button class="rx"><span class="emoji">👍</span> 2</button>
+                      <button class="rx"><span class="emoji">🎉</span> 1</button>
+                      <button class="rx rx--add" aria-label="Add reaction">☺ +</button>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="msg">
+                  <span class="av av--md" style="background:#5C7A8A">SC</span>
+                  <div>
+                    <div class="msg__head"><span class="msg__author">Sarah Chen</span><span class="msg__time">9:08 AM</span></div>
+                    <div class="msg__body">Thanks Atlas! The list looks solid. I'll spot-check and add any accounts from the west region.</div>
+                    <div class="rxrow"><button class="rx is-me"><span class="emoji">👍</span> 1</button><button class="rx rx--add">☺ +</button></div>
+                  </div>
+                </article>
+
+                <article class="msg">
+                  <span class="av av--md av--agent" style="background:#0B6B51">Q</span>
+                  <div>
+                    <div class="msg__head"><span class="msg__author">Quill</span><span class="aimk">AI</span><span class="msg__time">9:10 AM</span></div>
+                    <div class="msg__body">I analyzed the top 20 accounts and drafted personalized email openers. See the thread for samples and my rationale.</div>
+                    <button class="threadlink" data-open-thread>
+                      <span class="avs"><span class="av av--sm" style="background:#B07A57">MR</span><span class="av av--sm" style="background:#5C7A8A">SC</span><span class="av av--sm av--agent" style="background:#0B6B51">Q</span></span>
+                      3 replies <span class="faint">· Last reply 9:15 AM</span> <span class="chev">→</span>
+                    </button>
+                  </div>
+                </article>
+              </div>
+
+              <!-- COMPOSER -->
+              <div class="composer">
+                <div class="composer__tools">
+                  <span class="tb" style="font-weight:700">B</span>
+                  <span class="tb" style="font-style:italic">I</span>
+                  <span class="tb" style="text-decoration:line-through">S</span>
+                  <span class="tb mono">&lt;/&gt;</span>
+                  <span class="tb">🔗</span>
+                  <span class="div"></span>
+                  <span class="tb">☰</span>
+                  <span class="tb">≣</span>
+                  <span class="div"></span>
+                  <span class="tb">＠</span>
+                </div>
+                <div class="composer__field">Message #go-to-market</div>
+                <div class="composer__foot">
+                  <span class="tb">＋</span><span class="tb">Aa</span><span class="tb">☺</span><span class="tb">▤</span><span class="tb">◎</span><span class="tb">✦</span>
+                  <span class="composer__send">
+                    <button class="btn btn--primary" style="border-radius:9px 0 0 9px">➤ Send</button>
+                    <span class="split">⌄</span>
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            <!-- RIGHT CONTEXT PANE -->
+            <aside class="ctx" id="ctx-hero">
+              <div class="ctx__hd">
+                <div>
+                  <div class="ctx__title" data-ctx-title>Thread</div>
+                  <div class="ctx__sub"># go-to-market</div>
+                </div>
+                <button class="ctx__x" aria-label="Close panel">✕</button>
+              </div>
+              <div class="tabs" role="tablist">
+                <button class="tab is-active" role="tab" aria-selected="true" data-ctx-tab="thread">Thread</button>
+                <button class="tab" role="tab" aria-selected="false" data-ctx-tab="work">Agent at work <span class="mini">Quill</span></button>
+              </div>
+
+              <!-- Thread pane -->
+              <div class="ctx__scroll tabpane is-active" data-ctx-pane="thread">
+                <article class="msg msg--thread">
+                  <span class="av av--agent" style="background:#0B6B51">Q</span>
+                  <div>
+                    <div class="msg__head"><span class="msg__author">Quill</span><span class="aimk">AI</span><span class="msg__time">9:10 AM</span></div>
+                    <div class="msg__body">I analyzed the top 20 accounts and drafted personalized email openers. See rationale below.</div>
+                  </div>
+                </article>
+
+                <div class="repliesbar">3 replies <span class="acts"><button class="icbtn" style="width:22px;height:22px" title="Notifications">🔔</button><button class="icbtn" style="width:22px;height:22px" title="Mark read">✓</button></span></div>
+
+                <article class="msg msg--thread">
+                  <span class="av av--agent" style="background:#0B6B51">Q</span>
+                  <div>
+                    <div class="msg__head"><span class="msg__author">Quill</span><span class="aimk">AI</span><span class="msg__time">9:10 AM</span></div>
+                    <div class="msg__body"><b>Rationale:</b> Selected accounts show strong product-usage signals and recent hiring in relevant roles. Openers reference their initiatives and our customer outcomes.</div>
+                    <div class="rxrow"><button class="rx"><span class="emoji">👍</span> 2</button></div>
+                  </div>
+                </article>
+
+                <article class="msg msg--thread">
+                  <span class="av" style="background:#B07A57">MR</span>
+                  <div>
+                    <div class="msg__head"><span class="msg__author">Mika Rivera</span><span class="msg__time">9:12 AM</span></div>
+                    <div class="msg__body">Thanks Quill. Can you prioritize messaging around ROI for Series B+ companies?</div>
+                    <div class="rxrow"><button class="rx is-me"><span class="emoji">👍</span> 1</button></div>
+                  </div>
+                </article>
+
+                <article class="msg msg--thread">
+                  <span class="av av--agent" style="background:#0B6B51">Q</span>
+                  <div>
+                    <div class="msg__head"><span class="msg__author">Quill</span><span class="aimk">AI</span><span class="msg__time">9:13 AM</span></div>
+                    <div class="msg__body">Good call. I've updated the openers to emphasize ROI and time-to-value for Series B+.</div>
+                    <div class="artifact"><span class="artifact__ic artifact__ic--doc">▤</span><div><div class="artifact__t">Email openers v2</div><div class="artifact__m">Google Docs · updated 9:13 AM</div></div><span class="artifact__go">↗</span></div>
+                  </div>
+                </article>
+
+                <article class="msg msg--thread">
+                  <span class="av" style="background:#5C7A8A">SC</span>
+                  <div>
+                    <div class="msg__head"><span class="msg__author">Sarah Chen</span><span class="msg__time">9:15 AM</span></div>
+                    <div class="msg__body">Looks great. Approved to use for this week's outreach.</div>
+                    <div class="rxrow"><button class="rx is-me"><span class="emoji">✅</span> 1</button></div>
+                  </div>
+                </article>
+              </div>
+
+              <!-- Agent-at-work pane (populated in Phase 1 too; here it's the live inspector) -->
+              <div class="ctx__scroll tabpane" data-ctx-pane="work">
+                <div class="between" style="margin-bottom:12px">
+                  <div class="cluster">
+                    <span class="av av--md av--agent" style="background:#0B6B51">Q</span>
+                    <div><div style="font-weight:640">Quill</div><div class="faint small">Drafting outreach · started 9:09 AM</div></div>
+                  </div>
+                  <span class="pill pill--ok"><span class="dt"></span> Working</span>
+                </div>
+                <div class="subtle-label" style="margin-bottom:6px">Plan</div>
+                <div class="plan" style="margin-bottom:16px">
+                  <div class="plan__i"><span class="mk mk--done">✓</span> Rank top 20 accounts by intent signals</div>
+                  <div class="plan__i"><span class="mk mk--done">✓</span> Draft personalized openers</div>
+                  <div class="plan__i"><span class="mk mk--now">●</span> Apply ROI framing for Series B+</div>
+                  <div class="plan__i todo"><span class="mk mk--todo"></span> Compile evidence pack for review</div>
+                </div>
+                <div class="subtle-label" style="margin-bottom:6px">Recent activity</div>
+                <div class="feed" style="margin-bottom:14px">
+                  <div class="feed__i"><span class="rt"></span><div>Rewrote 8 openers with ROI + time-to-value framing<div class="feed__t">9:13:04</div></div></div>
+                  <div class="feed__i"><span class="rt"></span><div>Read customer outcomes from <span class="mono">#customer-stories</span><div class="feed__t">9:12:20</div></div></div>
+                  <div class="feed__i"><span class="rt rt--muted"></span><div>Scored 20 accounts on 6 intent signals<div class="feed__t">9:10:48</div></div></div>
+                </div>
+                <div class="subtle-label" style="margin-bottom:8px">Artifacts</div>
+                <div class="stack" style="gap:8px">
+                  <div class="artifact" style="margin-top:0"><span class="artifact__ic artifact__ic--doc">▤</span><div><div class="artifact__t">Email openers v2</div><div class="artifact__m">Google Docs · 20 drafts</div></div><span class="artifact__go">↗</span></div>
+                  <div class="artifact" style="margin-top:0"><span class="artifact__ic artifact__ic--data">▦</span><div><div class="artifact__t">Account intent scores</div><div class="artifact__m">Data result · 20 rows</div></div><span class="artifact__go">↗</span></div>
+                </div>
+                <div class="wo__foot" style="border:0;background:none;padding:16px 0 0">
+                  <button class="btn btn--ghost">Open full transcript</button>
+                  <span class="grow"></span>
+                  <button class="btn btn--warn-ghost">◼ Stop</button>
+                </div>
+              </div>
+
+              <div class="ctx__reply">Reply in thread… <span class="snd">➤</span></div>
+            </aside>
+          </div>
+        </div>
+        <div class="screen__caption">
+          <b>The canonical Buzz One channel.</b>
+          <span>Left rail is a familiar messaging workspace with an Agents group · centre is always the channel · the right pane is a true thread that can switch to <b>Agent&nbsp;at&nbsp;work</b> without leaving the room. <span class="faint">Try the tabs and the work-object caret.</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="phase1">
+  <div class="wrap">
+    <div class="section__head">
+      <span class="eyebrow">Phase 01 · Conversation-first shell</span>
+      <h2 class="h2">See the work as it happens.</h2>
+      <p class="lede">The operating loop that ships first — agent work objects, a roster you read like teammates, and a right-pane inspector — derived from Buzz's existing encrypted observer stream with almost no new infrastructure.</p>
+    </div>
+
+    <div style="margin-top:clamp(26px,4vw,40px)">
+
+      <!-- ============================ (A) WORK-OBJECT STATES ============================ -->
+      <div class="subtle-label" style="margin-bottom:14px">Work-object states</div>
+      <div class="duo">
+
+        <!-- LEFT STACK · the normal lifecycle -->
+        <div class="stack">
+
+          <!-- 1 · RUNNING / LIVE -->
+          <div class="captioned">
+            <div class="wo" id="wo-p1-run" style="margin-top:0">
+              <div class="wo__hd">
+                <span class="wo__glyph wo__glyph--gh">☰</span>
+                <div>
+                  <div class="wo__ttl">Repo triage · buzz-relay</div>
+                  <div class="wo__by">Created by Nova · just now</div>
+                </div>
+                <button class="wo__toggle" data-wo-toggle="wo-p1-run" aria-label="Collapse work object"><span class="chev">⌄</span></button>
+              </div>
+              <div class="wo__rows">
+                <div class="wo__k">Execution status</div>
+                <div class="wo__v"><span class="statusline"><span class="statusdot statusdot--run"></span> Running · step 3 of 5</span></div>
+                <div class="wo__k">Latest step</div>
+                <div class="wo__v">Reproducing flaky test <span class="mono">e2e_relay</span></div>
+              </div>
+              <div class="wo__foot">
+                <button class="btn btn--ghost btn--sm">Open</button>
+                <button class="btn btn--warn-ghost btn--sm">◼ Stop</button>
+                <span class="grow"></span>
+                <span class="faint small">live</span>
+              </div>
+              <div class="wo__collapsed">
+                <span class="wo__glyph wo__glyph--gh" style="width:22px;height:22px;font-size:12px">☰</span>
+                <b>Nova</b> <span class="sep">·</span> Repo triage <span class="sep">·</span>
+                <span class="statusline"><span class="statusdot statusdot--run"></span> running</span> <span class="sep">·</span> step 3 of 5
+                <span class="pull"><button class="btn btn--ghost btn--sm">Open</button></span>
+              </div>
+            </div>
+            <div class="captioned__c"><b>Running.</b> A live step counter, a pulsing forest dot, and a Stop control always in reach.</div>
+          </div>
+
+          <!-- 2 · NEEDS REVIEW -->
+          <div class="captioned">
+            <div class="wo" id="wo-p1-review" style="margin-top:0">
+              <div class="wo__hd">
+                <span class="wo__glyph wo__glyph--sf">☁</span>
+                <div>
+                  <div class="wo__ttl">Salesforce lead sync</div>
+                  <div class="wo__by">Created by Atlas · 9:06 AM</div>
+                </div>
+                <button class="wo__toggle" data-wo-toggle="wo-p1-review" aria-label="Collapse work object"><span class="chev">⌄</span></button>
+              </div>
+              <div class="wo__rows">
+                <div class="wo__k">Execution status</div>
+                <div class="wo__v"><span class="statusline"><span class="statusdot"></span> Completed · awaiting review</span> <span class="faint" style="margin-left:8px">9:06 AM</span></div>
+                <div class="wo__k">Summary</div>
+                <div class="wo__v">142 leads · 18 accounts</div>
+                <div class="wo__k">Change preview</div>
+                <div class="wo__v"><span class="link">View details <span class="chev">⌄</span></span></div>
+              </div>
+              <div class="wo__foot">
+                <button class="btn btn--primary">Review change</button>
+                <span class="grow"></span>
+                <span class="faint small">No data written yet</span>
+              </div>
+              <div class="wo__collapsed">
+                <span class="wo__glyph wo__glyph--sf" style="width:22px;height:22px;font-size:12px">☁</span>
+                <b>Atlas</b> <span class="sep">·</span> Salesforce lead sync <span class="sep">·</span>
+                <span class="statusline"><span class="statusdot"></span> completed</span> <span class="sep">·</span> 142 leads
+                <span class="pull"><button class="btn btn--ghost btn--sm">Review change</button></span>
+              </div>
+            </div>
+            <div class="captioned__c"><b>Needs review.</b> Finished, but nothing is written yet — the one action is to review.</div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT STACK · exceptions + the collapsed form -->
+        <div class="stack">
+
+          <!-- 3 · INTERRUPTED -->
+          <div class="captioned">
+            <div class="wo" id="wo-p1-interrupt" style="margin-top:0">
+              <div class="wo__hd">
+                <span class="wo__glyph">⇅</span>
+                <div>
+                  <div class="wo__ttl">Contact import · CRM</div>
+                  <div class="wo__by">Created by Sage · 4m ago</div>
+                </div>
+                <button class="wo__toggle" data-wo-toggle="wo-p1-interrupt" aria-label="Collapse work object"><span class="chev">⌄</span></button>
+              </div>
+              <div class="wo__rows">
+                <div class="wo__k">Execution status</div>
+                <div class="wo__v"><span class="statusline"><span class="statusdot statusdot--warn"></span> Interrupted · waiting on you</span></div>
+                <div class="wo__k">Reason</div>
+                <div class="wo__v">Ambiguous match — 2 records need your call</div>
+              </div>
+              <div class="wo__foot">
+                <button class="btn btn--warn-ghost btn--sm">Resume</button>
+                <button class="btn btn--ghost btn--sm">Discard</button>
+                <span class="grow"></span>
+                <span class="faint small">paused 4m ago</span>
+              </div>
+              <div class="wo__collapsed">
+                <span class="wo__glyph" style="width:22px;height:22px;font-size:12px">⇅</span>
+                <b>Sage</b> <span class="sep">·</span> Contact import <span class="sep">·</span>
+                <span class="statusline"><span class="statusdot statusdot--warn"></span> waiting on you</span>
+                <span class="pull"><button class="btn btn--warn-ghost btn--sm">Resume</button></span>
+              </div>
+            </div>
+            <div class="captioned__c"><b>Interrupted.</b> Blocked on a human call — the rare place a warn tint is earned.</div>
+          </div>
+
+          <!-- 4 · ERROR -->
+          <div class="captioned">
+            <div class="wo" id="wo-p1-error" style="margin-top:0">
+              <div class="wo__hd">
+                <span class="wo__glyph wo__glyph--gh">☰</span>
+                <div>
+                  <div class="wo__ttl">Release notes · v2.4</div>
+                  <div class="wo__by">Created by Drift · 6m ago</div>
+                </div>
+                <button class="wo__toggle" data-wo-toggle="wo-p1-error" aria-label="Collapse work object"><span class="chev">⌄</span></button>
+              </div>
+              <div class="wo__rows">
+                <div class="wo__k">Execution status</div>
+                <div class="wo__v"><span class="statusline"><span class="statusdot statusdot--err"></span> Failed · rate limited</span></div>
+                <div class="wo__k">Detail</div>
+                <div class="wo__v"><span class="mono">429</span> · GitHub API rate limit</div>
+              </div>
+              <div class="wo__foot">
+                <button class="btn btn--ghost btn--sm">View log</button>
+                <button class="btn btn--ghost btn--sm">Retry</button>
+                <span class="grow"></span>
+                <span class="faint small">attempt 2 of 3</span>
+              </div>
+              <div class="wo__collapsed">
+                <span class="wo__glyph wo__glyph--gh" style="width:22px;height:22px;font-size:12px">☰</span>
+                <b>Drift</b> <span class="sep">·</span> Release notes <span class="sep">·</span>
+                <span class="statusline"><span class="statusdot statusdot--err"></span> failed</span> <span class="sep">·</span> rate limited
+                <span class="pull"><button class="btn btn--ghost btn--sm">Retry</button></span>
+              </div>
+            </div>
+            <div class="captioned__c"><b>Failed.</b> A red dot, the reason in plain text, and a retry — stated, not alarmed.</div>
+          </div>
+
+          <!-- 5 · COLLAPSED (resting form) -->
+          <div class="captioned">
+            <div class="wo is-collapsed" id="wo-p1-collapsed" style="margin-top:0">
+              <div class="wo__hd">
+                <span class="wo__glyph">▤</span>
+                <div>
+                  <div class="wo__ttl">Weekly digest · #go-to-market</div>
+                  <div class="wo__by">Created by Quill · 8:00 AM</div>
+                </div>
+                <button class="wo__toggle" data-wo-toggle="wo-p1-collapsed" aria-label="Expand work object"><span class="chev">⌄</span></button>
+              </div>
+              <div class="wo__rows">
+                <div class="wo__k">Execution status</div>
+                <div class="wo__v"><span class="statusline"><span class="statusdot"></span> Completed successfully</span></div>
+                <div class="wo__k">Summary</div>
+                <div class="wo__v">6 sections · 24 links · 3 highlights</div>
+              </div>
+              <div class="wo__foot">
+                <button class="btn btn--ghost btn--sm">Open</button>
+                <span class="grow"></span>
+                <span class="faint small">posted to #go-to-market</span>
+              </div>
+              <div class="wo__collapsed">
+                <span class="wo__glyph" style="width:22px;height:22px;font-size:12px">▤</span>
+                <b>Quill</b> <span class="sep">·</span> Weekly digest <span class="sep">·</span>
+                <span class="statusline"><span class="statusdot"></span> completed</span> <span class="sep">·</span> 6 sections
+                <span class="pull"><button class="btn btn--ghost btn--sm">Open</button></span>
+              </div>
+            </div>
+            <div class="captioned__c"><b>Collapsed.</b> The resting form — one line, one action. Use the caret to expand.</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ============================ (B) ROSTER AS A SOCIAL SURFACE ============================ -->
+      <div class="subtle-label" style="margin:clamp(30px,4.5vw,46px) 0 14px">Agent roster as a social surface</div>
+      <div class="captioned">
+        <div class="duo">
+
+          <!-- LEFT · roster mini-screen -->
+          <div class="mini-screen">
+            <div class="mini-screen__bar"><span class="lbl">Agents</span></div>
+            <div style="background:var(--rail);padding:6px 8px;display:flex;flex-direction:column;gap:2px">
+              <div class="prow">
+                <span class="av av--sm av--agent" style="background:#3F7D6A">N</span>
+                <span class="prow__name">Nova</span>
+                <span class="aimk">AI</span>
+                <span class="pill pill--model">Opus</span>
+                <span class="prow__state">Active</span>
+                <span class="dot dot--on"></span>
+              </div>
+              <div class="prow">
+                <span class="av av--sm av--agent" style="background:#4B6572">A</span>
+                <span class="prow__name">Atlas</span>
+                <span class="aimk">AI</span>
+                <span class="pill pill--model">Opus</span>
+                <span class="prow__state">Active</span>
+                <span class="dot dot--on"></span>
+              </div>
+              <div class="prow">
+                <span class="av av--sm av--agent" style="background:#0B6B51">Q</span>
+                <span class="prow__name">Quill</span>
+                <span class="aimk">AI</span>
+                <span class="pill pill--model">Sonnet</span>
+                <span class="prow__state">Idle</span>
+                <span class="dot dot--off"></span>
+              </div>
+              <div class="prow">
+                <span class="av av--sm av--agent" style="background:#8A5A86">P</span>
+                <span class="prow__name">Pixel</span>
+                <span class="aimk">AI</span>
+                <span class="pill pill--model">Haiku</span>
+                <span class="prow__state">Active</span>
+                <span class="dot dot--on"></span>
+              </div>
+              <div class="prow">
+                <span class="av av--sm av--agent" style="background:#9A6B4A">D</span>
+                <span class="prow__name">Drift</span>
+                <span class="aimk">AI</span>
+                <span class="pill pill--model">Haiku</span>
+                <span class="prow__state">Idle</span>
+                <span class="dot dot--off"></span>
+              </div>
+              <div class="prow">
+                <span class="av av--sm av--agent" style="background:#6E7A45">S</span>
+                <span class="prow__name">Sage</span>
+                <span class="aimk">AI</span>
+                <span class="pill pill--model">Sonnet</span>
+                <span class="prow__state">Idle</span>
+                <span class="dot dot--off"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT · per-agent context menu -->
+          <div class="panel">
+            <div class="stack" style="gap:2px;padding:8px">
+              <div class="navrow"><span class="ic">❏</span> Open agent work</div>
+              <div class="navrow"><span class="ic">⌖</span> Pin</div>
+              <div class="navrow"><span class="ic">⊘</span> Mute</div>
+              <div class="navrow"><span class="ic">‖</span> Pause</div>
+              <div class="navrow"><span class="ic">⧉</span> Duplicate from persona</div>
+              <div class="navrow"><span class="ic">▤</span> Archive</div>
+              <hr class="hr" style="margin:6px 0">
+              <div class="navrow"><span class="ic">⛭</span> Settings</div>
+            </div>
+          </div>
+
+        </div>
+        <div class="captioned__c">One roster, one source of truth — active / idle / needs-you state, a per-agent model, and a one-click <b>Open agent work</b>.</div>
+      </div>
+
+      <!-- ============================ (C) ACCEPTANCE ============================ -->
+      <div class="note" style="margin-top:clamp(26px,4vw,38px)">
+        <span class="ic">✓</span>
+        <div><b>Acceptance</b> — A running agent posts one collapsing work object with status, latest step, artifacts and a stop control; the roster surfaces state and model and opens the right-pane inspector without leaving the channel.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+<section class="section" id="phase2">
+  <div class="wrap">
+    <div class="section__head">
+      <span class="eyebrow">Phase 02 · Decisions &amp; evidence</span>
+      <h2 class="h2">Steer in one click. Trust becomes inspectable.</h2>
+      <p class="lede">A decision is a compact card in the timeline — allow once, allow for the mission, deny, or reply — bound to the exact proposed action. When work completes it posts evidence, not just prose: sources, screenshots, changed files, and a concise rationale.</p>
+    </div>
+
+    <div style="margin-top:clamp(26px,4vw,40px)">
+      <div class="duo">
+
+        <!-- (A) DECISION CARD — material risk → orange -->
+        <div class="captioned">
+          <article class="msg">
+            <span class="av av--md av--agent" style="background:#4B6572">A</span>
+            <div>
+              <div class="msg__head"><span class="msg__author">Atlas</span><span class="aimk">AI</span><span class="msg__time">9:16 AM</span></div>
+              <div class="msg__body">This needs your sign-off before I send.</div>
+
+              <div class="decision">
+                <div class="decision__hd">
+                  <span class="decision__badge">Approval</span>
+                  <span class="decision__ttl">Send launch emails to 142 leads</span>
+                </div>
+                <div class="decision__bd">
+                  <div class="decision__q" data-decide-q>Atlas wants to send the drafted opener to 142 leads via Gmail. This contacts customers and can't be undone.</div>
+                  <div class="decision__meta">
+                    <span><b>Actor</b> Atlas</span>
+                    <span><b>Tool</b> Gmail</span>
+                    <span><b>Scope</b> 142 recipients</span>
+                    <span><b>Expires</b> in 30 min</span>
+                  </div>
+                </div>
+                <div class="decision__choices">
+                  <button class="btn btn--warn" data-decide="Allowed once">Allow once</button>
+                  <button class="btn btn--warn-ghost" data-decide="Allowed for the mission">Allow for mission</button>
+                  <button class="btn btn--ghost" data-decide="Denied">Deny</button>
+                  <span class="decision__reply">↩ <span class="kbd">⏎</span> Allow · <span class="kbd">D</span> Deny · <span class="kbd">M</span> Mission</span>
+                </div>
+              </div>
+            </div>
+          </article>
+          <div class="captioned__c">Unanswered defaults to deny. The resolved choice condenses in place and emits a signed, searchable channel message.</div>
+        </div>
+
+        <!-- (B) QUESTION CARD — not risky → forest -->
+        <div class="captioned">
+          <div class="panel">
+            <div class="panel__hd">
+              <span class="pill pill--ok"><span class="dt"></span> Question</span>
+              <div style="font-weight:640;font-size:15px">Quill needs a steer</div>
+            </div>
+            <div class="panel__bd">
+              <p>Which tone should I lead with for Series B+ openers?</p>
+              <div class="cluster" style="margin-top:14px">
+                <button class="btn btn--ghost">ROI-first</button>
+                <button class="btn btn--ghost">Peer proof</button>
+                <button class="btn btn--ghost">Vision-led</button>
+                <span class="faint small">or reply in thread</span>
+              </div>
+            </div>
+          </div>
+          <div class="captioned__c">A question resumes only the correlated work when it's answered.</div>
+        </div>
+
+      </div>
+
+      <!-- (C) EVIDENCE PACK — full width -->
+      <div style="margin-top:20px">
+        <div class="panel">
+          <div class="panel__hd">
+            <span class="wo__glyph">▤</span>
+            <div>
+              <div style="font-weight:640;font-size:15px">Evidence · Email openers v2</div>
+              <div class="faint small">Compiled by Quill · 9:14 AM</div>
+            </div>
+            <span class="pill" style="margin-left:auto">Visible to #go-to-market</span>
+          </div>
+          <div class="panel__bd">
+            <div class="subtle-label" style="margin-bottom:11px">Sources &amp; artifacts</div>
+            <div class="grid-2">
+              <div class="artifact" style="max-width:none;margin-top:0">
+                <span class="artifact__ic artifact__ic--data">▦</span>
+                <div><div class="artifact__t">Account intent scores</div><div class="artifact__m">Data result · 20 rows · 9:10 AM</div></div>
+                <span class="artifact__go">↗</span>
+              </div>
+              <div class="artifact" style="max-width:none;margin-top:0">
+                <span class="artifact__ic artifact__ic--img">▣</span>
+                <div><div class="artifact__t">Salesforce list — before/after</div><div class="artifact__m">Screenshot · 9:06 AM</div></div>
+                <span class="artifact__go">↗</span>
+              </div>
+              <div class="artifact" style="max-width:none;margin-top:0">
+                <span class="artifact__ic artifact__ic--file">⊟</span>
+                <div><div class="artifact__t">openers.diff</div><div class="artifact__m">File change · +18 −4 · 9:13 AM</div></div>
+                <span class="artifact__go">↗</span>
+              </div>
+              <div class="artifact" style="max-width:none;margin-top:0">
+                <span class="artifact__ic artifact__ic--doc">▤</span>
+                <div><div class="artifact__t">Customer outcomes cited</div><div class="artifact__m">Source · #customer-stories</div></div>
+                <span class="artifact__go">↗</span>
+              </div>
+            </div>
+
+            <div class="subtle-label" style="margin:18px 0 9px">Rationale</div>
+            <div class="prose">These 142 accounts topped six intent signals — recent role hiring, rising product usage, and repeat pricing-page visits among them — so the list holds up line by line. Each opener leads with a peer's measured ROI and time-to-value, tracing every claim back to the outcomes cited in #customer-stories.</div>
+          </div>
+          <div class="panel__ft">
+            <button class="btn btn--ghost btn--sm">Open all</button>
+            <span class="faint small" style="margin-left:auto">Every artifact carries origin, freshness and permission scope.</span>
+          </div>
+        </div>
+
+        <div class="note" style="margin-top:16px">
+          <span class="ic">✓</span>
+          <div>Required for any claim that changes data, contacts customers, or recommends a consequential action.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="section" id="phase3">
+  <div class="wrap">
+    <div class="section__head">
+      <span class="eyebrow">Phase 03 · Routines &amp; execution profiles</span>
+      <h2 class="h2">Recurring value, and capability made intentional.</h2>
+      <p class="lede">Turn a request into a dependable Routine on the existing workflow scheduler, and give every agent an execution profile — model, capabilities, connectors, computer target, budget, and approval policy — with safe defaults.</p>
+    </div>
+
+    <div style="margin-top:clamp(26px,4vw,40px)" class="stack">
+      <div>
+        <div class="subtle-label" style="margin-bottom:12px">Create a routine</div>
+        <div class="duo">
+          <!-- LEFT: routine form -->
+          <div class="panel">
+            <div class="panel__hd">
+              <span class="wo__glyph" style="width:30px;height:30px;font-size:14px">◷</span>
+              <div style="flex:1"><div style="font-weight:640">New routine</div></div>
+              <span class="pill pill--ok"><span class="dt"></span> Draft</span>
+            </div>
+            <div class="panel__bd">
+              <div class="stack">
+                <div class="field">
+                  <span class="field__l">Task</span>
+                  <div class="input input--area placeholder">Every weekday, review the pipeline and post a brief to #sales.</div>
+                </div>
+                <div class="grid-2">
+                  <div class="field">
+                    <span class="field__l">Channel</span>
+                    <div class="select"><span class="hash" style="color:var(--faint);font-weight:600">#</span> sales <span class="car">⌄</span></div>
+                  </div>
+                  <div class="field">
+                    <span class="field__l">Agent</span>
+                    <div class="select"><span class="av av--sm av--agent" style="background:#4B6572">A</span> Atlas <span class="pill pill--model">Opus</span> <span class="car">⌄</span></div>
+                  </div>
+                </div>
+                <div class="grid-2">
+                  <div class="field">
+                    <span class="field__l">Schedule</span>
+                    <div class="select">Every weekday · 08:30 <span class="car">⌄</span></div>
+                  </div>
+                  <div class="field">
+                    <span class="field__l">Approval policy</span>
+                    <div class="select">Ask before external actions <span class="car">⌄</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="panel__ft">
+              <button class="btn btn--primary">Create routine</button>
+              <span class="grow" style="margin-left:auto"></span>
+              <span class="faint small">Next run: tomorrow 08:30</span>
+            </div>
+          </div>
+
+          <!-- RIGHT: in-channel result -->
+          <div class="captioned">
+            <div class="subtle-label">…as it appears in the channel</div>
+            <div class="mini-screen">
+              <div class="mini-screen__bar"><span class="screen__dots"><i></i><i></i><i></i></span><span class="lbl"># sales</span></div>
+              <div style="padding:14px 16px;background:var(--surface)">
+                <article class="msg">
+                  <span class="av av--md av--agent" style="background:#4B6572">A</span>
+                  <div>
+                    <div class="msg__head"><span class="msg__author">Atlas</span><span class="aimk">AI</span><span class="msg__time">Mon 08:30</span><span class="pill" style="margin-left:2px"><span class="dt"></span> Routine</span></div>
+                    <div class="msg__body">Pipeline brief — 6 deals advanced, 2 at risk. Full breakdown attached.</div>
+                    <div class="artifact"><span class="artifact__ic artifact__ic--data">▦</span><div><div class="artifact__t">Pipeline snapshot</div><div class="artifact__m">Data result · 24 rows · 08:30</div></div><span class="artifact__go">↗</span></div>
+                    <div class="faint small" style="margin-top:8px">Next run tomorrow 08:30 · last run succeeded</div>
+                  </div>
+                </article>
+              </div>
+            </div>
+            <div class="captioned__c">The routine posts to its owning room and exposes next-run and last outcome — <b>no separate dashboard</b>.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Execution profile -->
+      <div>
+        <div class="subtle-label" style="margin-bottom:12px">Execution profile</div>
+        <div class="panel">
+          <div class="panel__hd">
+            <span class="av av--md av--agent" style="background:#4B6572">A</span>
+            <div style="flex:1"><div style="font-weight:640">Atlas <span class="aimk">AI</span></div><div class="faint small">Effective profile · shown on every work object</div></div>
+            <span class="pill pill--model">Opus</span>
+          </div>
+          <div class="panel__bd">
+            <div class="grid-2" style="gap:22px 20px">
+              <div class="field">
+                <span class="field__l">Model</span>
+                <div class="segmented">
+                  <span class="segmented__i" aria-selected="true">Opus</span>
+                  <span class="segmented__i">Sonnet</span>
+                  <span class="segmented__i">Haiku</span>
+                </div>
+                <span class="field__h">Fit model to the work — deep reasoning, balanced throughput, or fast&nbsp;+&nbsp;cheap.</span>
+              </div>
+              <div class="field">
+                <span class="field__l">Computer target</span>
+                <div class="segmented">
+                  <span class="segmented__i" aria-selected="true">None</span>
+                  <span class="segmented__i">Sandbox</span>
+                  <span class="segmented__i warnsel">Cloud desktop</span>
+                  <span class="segmented__i warnsel">Local computer</span>
+                </div>
+                <span class="field__h">Default is none. Cloud and local get separate credentials and a stop control.</span>
+              </div>
+              <div class="field">
+                <span class="field__l">Capabilities</span>
+                <div class="chiprow">
+                  <span class="chip chip--on">Read channels</span>
+                  <span class="chip chip--on">Search</span>
+                  <span class="chip chip--on">Draft</span>
+                  <span class="chip">Send email <span class="x">+</span></span>
+                  <span class="chip">Write files <span class="x">+</span></span>
+                </div>
+              </div>
+              <div class="field">
+                <span class="field__l">Connectors</span>
+                <div class="chiprow">
+                  <span class="chip chip--on">Salesforce</span>
+                  <span class="chip chip--on">Gmail</span>
+                  <span class="chip">GitHub <span class="x">+</span></span>
+                </div>
+              </div>
+              <div class="field">
+                <span class="field__l">Daily budget</span>
+                <div class="meter" style="margin-top:2px"><span class="meter__fill" style="width:62%"></span></div>
+                <dl class="kv" style="margin-top:6px"><dt>Spent today</dt><dd>$12.40</dd><dt>Limit</dt><dd>$20.00</dd></dl>
+              </div>
+              <div class="field">
+                <span class="field__l">Approval policy</span>
+                <div class="select">Ask before consequential actions <span class="car">⌄</span></div>
+                <span class="field__h">Unanswered requests default to deny.</span>
+              </div>
+            </div>
+          </div>
+          <div class="panel__ft">
+            <span class="faint small">Safe defaults translate into the advanced config panel, which remains the full provenance view.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="section" id="phase4">
+  <div class="wrap">
+    <div class="section__head">
+      <span class="eyebrow">Phase 04 · Connectors &amp; Computer Session</span>
+      <h2 class="h2">From generic agent to work colleague — safely.</h2>
+      <p class="lede">A curated connector catalogue with explicit scopes and revocation, and a provider-neutral Computer Session a human can watch and stop — introduced as a guarded platform, not a demo. The default computer target is none.</p>
+    </div>
+    <div style="margin-top:clamp(26px,4vw,40px)">
+
+      <div>
+        <div class="subtle-label" style="margin-bottom:12px">Connector catalogue</div>
+        <div class="trio">
+
+          <div class="panel">
+            <div class="panel__hd">
+              <span class="logo logo--gmail">M</span>
+              <div>
+                <div class="h3">Gmail</div>
+                <div style="margin-top:5px"><span class="pill pill--ok"><span class="dt"></span> Connected</span></div>
+              </div>
+            </div>
+            <div class="panel__bd">
+              <div class="stack">
+                <div>
+                  <div class="subtle-label" style="margin-bottom:5px">Account</div>
+                  <div class="small">mika@acme.com</div>
+                </div>
+                <div>
+                  <div class="subtle-label" style="margin-bottom:6px">Scopes</div>
+                  <div class="chiprow">
+                    <span class="chip">Send as</span>
+                    <span class="chip">Read drafts</span>
+                  </div>
+                </div>
+                <div class="faint small">Last used 9:13 AM</div>
+              </div>
+            </div>
+            <div class="panel__ft">
+              <button class="btn btn--ghost btn--sm">Revoke</button>
+              <span class="faint small" style="margin-left:auto">Attached to Atlas, Quill</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel__hd">
+              <span class="logo logo--github">G</span>
+              <div>
+                <div class="h3">GitHub</div>
+                <div style="margin-top:5px"><span class="pill pill--ok"><span class="dt"></span> Connected</span></div>
+              </div>
+            </div>
+            <div class="panel__bd">
+              <div class="stack">
+                <div>
+                  <div class="subtle-label" style="margin-bottom:5px">Account</div>
+                  <div class="small">acme-eng</div>
+                </div>
+                <div>
+                  <div class="subtle-label" style="margin-bottom:6px">Scopes</div>
+                  <div class="chiprow">
+                    <span class="chip">Read repos</span>
+                    <span class="chip">Open PRs</span>
+                  </div>
+                </div>
+                <div class="faint small">Last used yesterday</div>
+              </div>
+            </div>
+            <div class="panel__ft">
+              <button class="btn btn--ghost btn--sm">Revoke</button>
+              <span class="faint small" style="margin-left:auto">Attached to Nova</span>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel__hd">
+              <span class="logo logo--salesforce">S</span>
+              <div>
+                <div class="h3">Salesforce</div>
+                <div style="margin-top:5px"><span class="pill pill--ok"><span class="dt"></span> Connected</span></div>
+              </div>
+            </div>
+            <div class="panel__bd">
+              <div class="stack">
+                <div>
+                  <div class="subtle-label" style="margin-bottom:5px">Account</div>
+                  <div class="small">AcmeCloud</div>
+                </div>
+                <div>
+                  <div class="subtle-label" style="margin-bottom:6px">Scopes</div>
+                  <div class="chiprow">
+                    <span class="chip">Leads R/W</span>
+                    <span class="chip">Accounts R</span>
+                  </div>
+                </div>
+                <div class="faint small">Last used 9:06 AM</div>
+              </div>
+            </div>
+            <div class="panel__ft">
+              <button class="btn btn--ghost btn--sm">Revoke</button>
+              <span class="faint small" style="margin-left:auto">Attached to Atlas</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="note" style="margin-top:16px">
+          <span class="ic">✓</span>
+          <span>Curated catalogue, OAuth only, scope disclosed in-channel. Secrets are write-only — the UI shows account, scopes and last use, never keys.</span>
+        </div>
+      </div>
+
+      <div style="margin-top:clamp(32px,4vw,48px)">
+        <div class="subtle-label" style="margin-bottom:12px">Computer Session v1</div>
+        <div class="duo">
+
+          <div class="viewport">
+            <div class="viewport__chrome">
+              <i></i><i></i><i></i>
+              <span class="viewport__url">app.salesforce.com/leads</span>
+            </div>
+            <div class="viewport__body">
+              <div class="viewport__live"><span class="rec"></span> Live · sandbox</div>
+              <div class="viewport__cursor">➤</div>
+              <span>Sandbox desktop · streaming preview</span>
+              <button class="viewport__stop btn btn--warn btn--sm">◼ Stop</button>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div>
+              <div class="subtle-label" style="margin-bottom:8px">Execution target</div>
+              <div class="segmented">
+                <button class="segmented__i" aria-selected="true">None</button>
+                <button class="segmented__i" aria-selected="false">Sandbox</button>
+                <button class="segmented__i warnsel" aria-selected="false">Cloud desktop</button>
+                <button class="segmented__i warnsel" aria-selected="false">Local computer</button>
+              </div>
+            </div>
+
+            <div class="note note--warn">
+              <span class="ic">!</span>
+              <span>Local mode requires desktop-owned OS permission, an always-visible capture indicator, a hardware stop shortcut, and per-step approval by default. No hidden background input.</span>
+            </div>
+
+            <div>
+              <div class="subtle-label" style="margin-bottom:8px">Posted as evidence</div>
+              <div class="artifact" style="margin-top:0">
+                <span class="artifact__ic artifact__ic--img">▨</span>
+                <div>
+                  <div class="artifact__t">Final screenshot — 18 accounts updated</div>
+                  <div class="artifact__m">Snapshot · 9:06 AM · redacted preview</div>
+                </div>
+                <span class="artifact__go">↗</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <p class="captioned__c" style="margin-top:14px">Every provider normalises into the same observer frames and media artifacts, so one Buzz One UI supervises them all.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+<section class="section" id="phase5">
+  <div class="wrap">
+    <div class="section__head">
+      <span class="eyebrow">Phase 05 · Operator polish</span>
+      <h2 class="h2">Lower the cost of starting — and steering — work.</h2>
+      <p class="lede">An "Ask Buzz One" launcher that turns a request into a scoped agent proposal before anything runs, editable dictation that is never sent automatically, and considered empty and recovery states.</p>
+    </div>
+
+    <div style="margin-top:clamp(26px,4vw,40px)">
+
+      <!-- (A) Ask Buzz One launcher -->
+      <div class="captioned" style="max-width:620px">
+        <span class="subtle-label">Ask Buzz One</span>
+
+        <div class="cmdbar">
+          <div class="cmdbar__in">
+            <span class="cmdbar__spark">✦</span>
+            <div class="cmdbar__q">Draft a competitive teardown of Acme vs Northwind and post to #product-launch<span class="cur">▍</span></div>
+            <span class="cmdbar__hint"><kbd class="kbd">⏎</kbd></span>
+          </div>
+          <div class="cmdbar__prop">
+            <div class="subtle-label" style="margin-bottom:8px">Proposed before anything runs</div>
+
+            <div class="proprow">
+              <span class="lb">Agent</span>
+              <span class="cluster">
+                <span class="av av--sm av--agent" style="background:#3F7D6A">N</span>
+                <span>Nova</span>
+                <span class="aimk">AI</span>
+                <span class="pill pill--model">Opus</span>
+              </span>
+            </div>
+            <div class="proprow">
+              <span class="lb">Channel</span>
+              <span>#product-launch</span>
+            </div>
+            <div class="proprow">
+              <span class="lb">Capabilities</span>
+              <span class="chiprow">
+                <span class="chip">Search web</span>
+                <span class="chip">Read #customer-stories</span>
+                <span class="chip">Draft</span>
+              </span>
+            </div>
+            <div class="proprow">
+              <span class="lb">Approval</span>
+              <span>Ask before posting</span>
+            </div>
+
+            <div class="between" style="margin-top:10px;padding-top:12px;border-top:1px solid var(--divider)">
+              <span class="cluster">
+                <button class="btn btn--primary">Start work</button>
+                <button class="btn btn--ghost">Edit scope</button>
+              </span>
+              <span class="faint small">Nothing runs until you confirm.</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="captioned__c">The launcher proposes agent, channel, capabilities and approval policy — scope is visible and editable before broad work begins.</p>
+      </div>
+
+      <!-- (B) + (C) -->
+      <div class="duo" style="margin-top:clamp(22px,3vw,32px)">
+
+        <!-- (B) Dictation in the composer -->
+        <div>
+          <div class="subtle-label" style="margin-bottom:10px">Dictation in the composer</div>
+
+          <div class="mini-screen">
+            <div class="mini-screen__bar"><span class="lbl">#go-to-market</span></div>
+            <div class="composer">
+              <div class="composer__tools">
+                <span class="tb" style="font-weight:700">B</span>
+                <span class="tb" style="font-style:italic">I</span>
+                <span class="tb mono">&lt;/&gt;</span>
+                <span class="div"></span>
+                <span class="tb">＠</span>
+              </div>
+              <div class="composer__field" style="color:var(--ink)">Let's prioritise the west-region accounts for this week and loop in Sarah</div>
+              <div class="composer__foot">
+                <span class="tb" style="background:var(--forest-tint);color:var(--forest)" title="Dictation active"><span class="emoji">🎙</span></span>
+                <span class="tb">＋</span>
+                <span class="tb">☺</span>
+                <span class="tb">▤</span>
+                <span class="pill pill--ok" style="margin-left:8px"><span class="dt"></span> Listening</span>
+                <span class="composer__send">
+                  <button class="btn btn--primary" style="border-radius:9px 0 0 9px">➤ Send</button>
+                  <span class="split">⌄</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="note" style="margin-top:12px">
+            <span class="ic">✎</span>
+            <span>Dictation is an explicit, editable enhancement behind a microphone permission — the transcript is yours to edit and is never sent automatically.</span>
+          </div>
+        </div>
+
+        <!-- (C) Empty & recovery states -->
+        <div>
+          <div class="subtle-label" style="margin-bottom:10px">Empty &amp; recovery states</div>
+
+          <div class="stack">
+            <div class="panel">
+              <div class="panel__bd" style="display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding-block:26px">
+                <p class="muted" style="margin:0">No agents are working right now.</p>
+                <button class="btn btn--ghost btn--sm">Ask Buzz One to start something</button>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panel__bd">
+                <div class="between">
+                  <span style="font-size:13.5px">Nova's session was interrupted at step 3.</span>
+                  <span class="cluster">
+                    <button class="btn btn--warn-ghost btn--sm">Resume where it left off</button>
+                    <button class="btn btn--ghost btn--sm">Start fresh</button>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</section>
+<section class="section" id="system">
+  <div class="wrap">
+    <div class="section__head">
+      <span class="eyebrow">Design system · Team Table</span>
+      <h2 class="h2">One warm surface, one green accent,<br>one loud action in view.</h2>
+      <p class="lede">The Team Table language is deliberately narrow so agent work stays legible. A single warm off-white ground, ink text, forest green for every act of collaboration, and orange reserved strictly for consequence. It commits to one light theme on purpose — no dark-mode variant for this initial channel experience.</p>
+    </div>
+
+    <div style="margin-top:clamp(28px,4vw,44px)" class="stack">
+      <div>
+        <div class="subtle-label" style="margin-bottom:12px">Colour tokens</div>
+        <div class="swatches">
+          <div class="swatchcard"><span class="chip" style="background:#FCFBF8"></span><div class="meta"><div class="nm">Surface</div><div class="hx">#FCFBF8</div></div></div>
+          <div class="swatchcard"><span class="chip" style="background:#FFFFFF"></span><div class="meta"><div class="nm">Raised</div><div class="hx">#FFFFFF</div></div></div>
+          <div class="swatchcard"><span class="chip" style="background:#F6F4EF"></span><div class="meta"><div class="nm">Rail / sunken</div><div class="hx">#F6F4EF</div></div></div>
+          <div class="swatchcard"><span class="chip" style="background:#1C1E1B"></span><div class="meta"><div class="nm">Ink</div><div class="hx">#1C1E1B</div></div></div>
+          <div class="swatchcard"><span class="chip" style="background:#74766F"></span><div class="meta"><div class="nm">Muted</div><div class="hx">#74766F</div></div></div>
+          <div class="swatchcard"><span class="chip" style="background:#9C9E94"></span><div class="meta"><div class="nm">Faint</div><div class="hx">#9C9E94</div></div></div>
+          <div class="swatchcard"><span class="chip" style="background:#E9E8E3"></span><div class="meta"><div class="nm">Divider</div><div class="hx">#E9E8E3</div></div></div>
+          <div class="swatchcard"><span class="chip" style="background:#075B43"></span><div class="meta"><div class="nm">Forest · accent</div><div class="hx">#075B43</div></div></div>
+          <div class="swatchcard"><span class="chip" style="background:#0B6B51"></span><div class="meta"><div class="nm">Focus / links</div><div class="hx">#0B6B51</div></div></div>
+          <div class="swatchcard"><span class="chip" style="background:#EAF1EC"></span><div class="meta"><div class="nm">Forest tint</div><div class="hx">#EAF1EC</div></div></div>
+          <div class="swatchcard"><span class="chip" style="background:#D97706"></span><div class="meta"><div class="nm">Review · risk</div><div class="hx">#D97706</div></div></div>
+          <div class="swatchcard"><span class="chip" style="background:#1E9E6A"></span><div class="meta"><div class="nm">Success / presence</div><div class="hx">#1E9E6A</div></div></div>
+        </div>
+      </div>
+
+      <div class="duo" style="align-items:start;margin-top:8px">
+        <div>
+          <div class="subtle-label" style="margin-bottom:6px">Type scale</div>
+          <div class="panel"><div class="panel__bd" style="padding-block:6px">
+            <div class="scalerow"><span class="lbl">display / 50</span><span class="display" style="font-size:30px">Agents are members</span></div>
+            <div class="scalerow"><span class="lbl">h2 / 32</span><span class="h2" style="font-size:24px">Section heading</span></div>
+            <div class="scalerow"><span class="lbl">h3 / 19</span><span class="h3">Sub-heading</span></div>
+            <div class="scalerow"><span class="lbl">body / 16</span><span>Chat body is the base type size.</span></div>
+            <div class="scalerow"><span class="lbl">meta / 12</span><span class="small muted">Timestamps · agent activity labels</span></div>
+            <div class="scalerow" style="border:0"><span class="lbl">mono / 11</span><span class="subtle-label">TRACKING LABEL</span></div>
+          </div></div>
+        </div>
+        <div class="stack">
+          <div>
+            <div class="subtle-label" style="margin-bottom:6px">Principles</div>
+            <div class="stack" style="gap:10px">
+              <div class="note"><span class="ic">▪</span><div><b>Agents are teammates, not a dashboard.</b> People-shaped rows with an AI marker, presence, and readable state — never a separate fleet console.</div></div>
+              <div class="note"><span class="ic">▪</span><div><b>The channel is always home.</b> Rich agent work lives as an attachment beneath the message that introduced it; the right pane is a true thread that can become <em>Agent&nbsp;at&nbsp;work</em>.</div></div>
+              <div class="note note--warn"><span class="ic">▪</span><div><b>Orange means consequence.</b> The forest accent carries all routine collaboration; orange appears only for action with material or irreversible risk.</div></div>
+            </div>
+          </div>
+          <div>
+            <div class="subtle-label" style="margin-bottom:6px">Motion &amp; shape</div>
+            <div class="panel"><div class="panel__bd">
+              <dl class="kv">
+                <dt>Work-object expand</dt><dd>160–200ms height + opacity</dd>
+                <dt>Live activity line</dt><dd>cross-fade, no reflow</dd>
+                <dt>Screenshot → pane</dt><dd>shared-layout transition</dd>
+                <dt>Reduced motion</dt><dd>fully respected</dd>
+                <dt>Radius</dt><dd>12px cards · 8px controls · pill</dd>
+              </dl>
+            </div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="section" id="roadmap">
+  <div class="wrap">
+    <div class="section__head">
+      <span class="eyebrow">Roadmap · ten increments</span>
+      <h2 class="h2">Ship the conversation-first loop first.</h2>
+      <p class="lede">Increments 1–4 make Buzz One visibly different with minimal new infrastructure. Ship evidence and routines next to make work explainable and recurring; build connectors and Computer Session as guarded capability platforms; finish with model profiles and the operator layer.</p>
+    </div>
+
+    <div class="tablewrap" style="margin-top:clamp(24px,4vw,38px)">
+      <table class="rm">
+        <thead><tr><th>#</th><th>Increment</th><th>Why it changes the product</th><th>Existing seams</th><th>Effort</th><th>Acceptance test</th></tr></thead>
+        <tbody>
+          <tr><td class="n">01</td><td><b>Agent work objects in channel</b></td><td>Turns invisible tool use into a team-readable artifact</td><td>AgentSessionThreadPanel, observer frame parser</td><td class="eff">M</td><td>A running agent posts one collapsing work object with status, latest step, sources/artifacts and a stop control.</td></tr>
+          <tr><td class="n">02</td><td><b>Native decision cards</b></td><td>The human steers in one click without breaking flow</td><td>WorkflowApprovalCard, approval kinds</td><td class="eff">S–M</td><td>A decision appears in-channel, keyboard choices work, and the resolved choice becomes a signed, auditable message.</td></tr>
+          <tr><td class="n">03</td><td><b>Right-pane Agent at work</b></td><td>Grok Bot's supervision loop without abandoning the conversation</td><td>AgentSessionThreadPanel, split-pane state</td><td class="eff">M</td><td>Selecting a live agent shows plan, transcript summary, artifacts and last update; close returns to the thread.</td></tr>
+          <tr><td class="n">04</td><td><b>Agent roster as a social surface</b></td><td>Makes agents discoverable, understandable and manageable</td><td>AppSidebar, managed-agent hooks, profile data</td><td class="eff">S</td><td>Sidebar shows active/idle/needs-you; context menu pins, mutes, pauses and opens work.</td></tr>
+          <tr><td class="n">05</td><td><b>Evidence packs</b></td><td>"Trust me" becomes inspectable claims and sources</td><td>messages/media, canvas, observer transcript</td><td class="eff">M</td><td>An agent attaches sources, screenshots, changed files and a concise rationale to a channel post.</td></tr>
+          <tr><td class="n">06</td><td><b>Computer Session v1</b></td><td>Lets a human observe browser/desktop action and take over</td><td>Tauri desktop layer, observer frames, media storage</td><td class="eff">L</td><td>One sandbox/cloud desktop streams preview frames, posts a final snapshot, and enforces a stop button.</td></tr>
+          <tr><td class="n">07</td><td><b>Connector catalogue v1</b></td><td>Converts a generic agent into a work colleague</td><td>McpServersSection, personas, keychain config</td><td class="eff">L</td><td>Gmail, GitHub and Salesforce connect, scope, attach to an agent, revoke, and show in the profile.</td></tr>
+          <tr><td class="n">08</td><td><b>Routines</b></td><td>Makes recurring operational value obvious</td><td>buzz-workflow cron/interval scheduler</td><td class="eff">M</td><td>A non-technical user creates a weekday 08:30 brief, sees next run, pauses it, and reviews run history in the channel.</td></tr>
+          <tr><td class="n">09</td><td><b>Model &amp; execution profiles</b></td><td>Makes capability, cost and risk intentional per agent</td><td>AgentConfigPanel, provider/model config, personas</td><td class="eff">M</td><td>Agent profile selects an approved model and execution target; every work object shows the effective profile.</td></tr>
+          <tr><td class="n">10</td><td><b>Operator command bar + dictation</b></td><td>Lowers the cost of initiating and steering work</td><td>channel composer, desktop permissions</td><td class="eff">S–M</td><td>"Ask Buzz One…" turns a request into a scoped proposal; voice dictation is editable and never sent automatically.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note" style="margin-top:16px"><span class="ic">→</span><div><b>Recommended order.</b> Ship 1–4 as the conversation-first operating loop, then 5 and 8, then build 6 and 7 as guarded platforms, and finish with 9 and 10 as the leverage layer.</div></div>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="wrap foot__grid">
+    <div style="max-width:420px">
+      <div class="brand" style="margin-bottom:10px"><span class="brand__mark"></span> Buzz One <span class="brand__tag">Team&nbsp;Table</span></div>
+      <p class="small muted">A human-and-agent workspace. This is a design specification made live — the Team Table
+        visual direction applied across all five build phases. Rendered as a single committed light theme by design.</p>
+    </div>
+    <div class="small">
+      <div class="subtle-label" style="margin-bottom:8px">Reference</div>
+      <p class="muted">Buzz relay stays the authoritative source of truth. Work objects derive from encrypted
+        observer frames; decisions and evidence become ordinary, searchable channel events.</p>
+    </div>
+  </div>
+</footer>
+
+</main>
+
+<script>
+(function(){
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Work-object collapse/expand
+  document.addEventListener('click', function(e){
+    var t = e.target.closest('[data-wo-toggle]');
+    if(t){ var wo = document.getElementById(t.getAttribute('data-wo-toggle')); if(wo){ wo.classList.toggle('is-collapsed'); } }
+  });
+
+  // Right-pane tab switching (scoped per context pane)
+  document.addEventListener('click', function(e){
+    var tab = e.target.closest('[data-ctx-tab]');
+    if(!tab) return;
+    var ctx = tab.closest('.ctx'); if(!ctx) return;
+    var name = tab.getAttribute('data-ctx-tab');
+    ctx.querySelectorAll('[data-ctx-tab]').forEach(function(b){
+      var on = b===tab; b.classList.toggle('is-active',on); b.setAttribute('aria-selected',on?'true':'false');
+    });
+    ctx.querySelectorAll('[data-ctx-pane]').forEach(function(p){
+      p.classList.toggle('is-active', p.getAttribute('data-ctx-pane')===name);
+    });
+    var title = ctx.querySelector('[data-ctx-title]');
+    if(title){ title.textContent = name==='work' ? 'Agent at work' : 'Thread'; }
+  });
+
+  // "3 replies" link focuses the thread tab
+  document.addEventListener('click', function(e){
+    if(e.target.closest('[data-open-thread]')){
+      var ctx = document.getElementById('ctx-hero');
+      var tab = ctx && ctx.querySelector('[data-ctx-tab="thread"]');
+      if(tab) tab.click();
+    }
+  });
+
+  // Decision card resolve
+  document.addEventListener('click', function(e){
+    var choice = e.target.closest('[data-decide]');
+    if(!choice) return;
+    var card = choice.closest('.decision'); if(!card) return;
+    var label = choice.getAttribute('data-decide');
+    card.classList.add('decision--resolved');
+    var q = card.querySelector('[data-decide-q]');
+    var badge = card.querySelector('.decision__badge');
+    if(badge){ badge.textContent = 'Resolved'; }
+    if(q){ q.innerHTML = '<b>'+label+'</b> — resolved by Mika Rivera · just now. A signed channel message records the choice.'; }
+    var choices = card.querySelector('.decision__choices');
+    if(choices){ choices.innerHTML = '<span class="pill pill--ok"><span class="dt"></span> '+label+'</span><span class="decision__reply">Emitted as an auditable event ✓</span>'; }
+  });
+
+  // Smooth-scroll active state on top nav
+  var navlinks = Array.prototype.slice.call(document.querySelectorAll('.topnav a'));
+  if('IntersectionObserver' in window){
+    var map = {};
+    navlinks.forEach(function(a){ map[a.getAttribute('href').slice(1)] = a; });
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){
+          navlinks.forEach(function(a){ a.style.color=''; a.style.background=''; });
+          var a = map[en.target.id];
+          if(a){ a.style.color='var(--ink)'; a.style.background='var(--rail)'; }
+        }
+      });
+    },{rootMargin:'-45% 0px -50% 0px'});
+    document.querySelectorAll('section[id]').forEach(function(s){ obs.observe(s); });
+  }
+})();
+</script>
+</body>
+</html>
