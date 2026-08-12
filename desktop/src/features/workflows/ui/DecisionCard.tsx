@@ -175,6 +175,8 @@ export function DecisionCard({
       data-decision-kind={request.kind}
       data-testid="decision-card"
       onKeyDown={handleKeyDown}
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: keyboard shortcut container (↵/M/D) requires direct focus
+      tabIndex={0}
     >
       <div className="mb-1.5 flex items-center gap-1.5">
         {review ? <ShieldAlert className="h-3.5 w-3.5 text-amber-600" /> : null}
