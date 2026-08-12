@@ -124,7 +124,7 @@ struct ServerSpec {
 enum ClientState {
     Healthy {
         client: Arc<Client>,
-        pgid: Option<u32>,
+        pid: Option<u32>,
         tools: Arc<Vec<String>>,
     },
     Dead {
@@ -145,8 +145,8 @@ struct Server {
 
 impl Drop for Server {
     fn drop(&mut self) {
-        if let ClientState::Healthy { pgid: Some(p), .. } = &**self.client.load() {
-            killpg(*p, &self.name, "drop");
+        if let ClientState::Healthy { pid: Some(p), .. } = &**self.client.load() {
+            kill_process(*p, &self.name, "drop");
         }
     }
 }
@@ -244,14 +244,14 @@ impl McpRegistry {
                     .collect(),
                 cwd: cwd.to_owned(),
             };
-            let (client, pgid, tool_names, raw_tools) = spawn_one(&spec, reg.init_timeout).await?;
+            let (client, pid, tool_names, raw_tools) = spawn_one(&spec, reg.init_timeout).await?;
             let server_idx = reg.servers.len();
             let server = Arc::new(Server {
                 name: spec.name.clone(),
                 spec,
                 client: ArcSwap::from_pointee(ClientState::Healthy {
                     client: Arc::new(client),
-                    pgid,
+                    pid,
                     tools: Arc::new(tool_names),
                 }),
                 restart_lock: AsyncMutex::new(()),
@@ -454,9 +454,9 @@ impl McpRegistry {
             None => return,
         };
         let current = server.client.load_full();
-        let (pgid, tools) = match &*current {
+        let (pid, tools) = match &*current {
             ClientState::Dead { .. } => return,
-            ClientState::Healthy { pgid, tools, .. } => (*pgid, tools.clone()),
+            ClientState::Healthy { pid, tools, .. } => (*pid, tools.clone()),
         };
         let dead = Arc::new(ClientState::Dead {
             attempts: 1,
@@ -466,12 +466,12 @@ impl McpRegistry {
         });
         // CAS so we don't clobber a concurrent restart that already
         // transitioned the state. If the swap fails, the kill below is
-        // still safe — the pgid we read belonged to a process we observed
-        // as Healthy, and killpg on an already-reaped pgid is a no-op.
+        // still safe — the pid we read belonged to a process we observed
+        // as Healthy, and kill on an already-reaped pid is a no-op.
         let prev = server.client.compare_and_swap(&current, dead);
         if Arc::ptr_eq(&prev, &current) {
-            if let Some(p) = pgid {
-                killpg(p, &server.name, "kill_server");
+            if let Some(p) = pid {
+                kill_process(p, &server.name, "kill_server");
             }
             tracing::error!(
                 "MCP server '{}' killed and marked dead (reason={reason})",
@@ -490,11 +490,11 @@ impl McpRegistry {
         match &*current {
             ClientState::Healthy {
                 client,
-                pgid,
+                pid,
                 tools,
             } if Arc::ptr_eq(client, failed_client) => {
-                if let Some(p) = *pgid {
-                    killpg(p, &server.name, "call_failed");
+                if let Some(p) = *pid {
+                    kill_process(p, &server.name, "call_failed");
                 }
                 let dead = Arc::new(ClientState::Dead {
                     attempts: 1,
@@ -696,10 +696,10 @@ impl McpRegistry {
             self.max_attempts
         );
         match spawn_one(&server.spec, self.init_timeout).await {
-            Ok((client, pgid, tool_names, _raw_tools)) => {
+            Ok((client, pid, tool_names, _raw_tools)) => {
                 server.client.store(Arc::new(ClientState::Healthy {
                     client: Arc::new(client),
-                    pgid,
+                    pid,
                     tools: Arc::new(tool_names),
                 }));
 
@@ -759,28 +759,30 @@ async fn spawn_one(
     cmd.current_dir(&spec.cwd);
     cmd.stderr(std::process::Stdio::inherit());
 
-    #[cfg(unix)]
-    cmd.process_group(0);
-
+    // MCP servers intentionally inherit buzz-agent's process group (no
+    // process_group(0) here).  buzz-acp kills buzz-agent via killpg on its
+    // PGID; by sharing that group, MCP servers are reaped in the same signal
+    // delivery — no separate cleanup step needed and no risk of orphans if
+    // buzz-agent is SIGKILLed before its Rust destructors run.
     configure_no_window(&mut cmd);
 
     let transport = TokioChildProcess::new(cmd)
         .map_err(|e| AgentError::Mcp(format!("spawn {}: {e}", spec.name)))?;
-    let pgid = transport.id();
+    let pid = transport.id();
 
-    struct PgidGuard {
-        pgid: Option<u32>,
+    struct ProcessGuard {
+        pid: Option<u32>,
         name: String,
     }
-    impl Drop for PgidGuard {
+    impl Drop for ProcessGuard {
         fn drop(&mut self) {
-            if let Some(p) = self.pgid.take() {
-                killpg(p, &self.name, "spawn_dropped");
+            if let Some(p) = self.pid.take() {
+                kill_process(p, &self.name, "spawn_dropped");
             }
         }
     }
-    let mut guard = PgidGuard {
-        pgid,
+    let mut guard = ProcessGuard {
+        pid,
         name: spec.name.clone(),
     };
 
@@ -808,8 +810,8 @@ async fn spawn_one(
         }
     };
     let names: Vec<String> = tools.iter().map(|t| t.name.to_string()).collect();
-    guard.pgid = None;
-    Ok((client, pgid, names, tools))
+    guard.pid = None;
+    Ok((client, pid, names, tools))
 }
 
 /// Send `notifications/cancelled` to the MCP server, fire-and-forget.
@@ -872,17 +874,17 @@ fn cap_schema(qname: &str, schema: Value) -> Value {
 }
 
 #[cfg(unix)]
-fn killpg(pgid: u32, name: &str, stage: &str) {
-    use nix::sys::signal::{killpg as nix_killpg, Signal};
+fn kill_process(pid: u32, name: &str, stage: &str) {
+    use nix::sys::signal::{kill, Signal};
     use nix::unistd::Pid;
-    let result = nix_killpg(Pid::from_raw(pgid as i32), Signal::SIGKILL);
+    let result = kill(Pid::from_raw(pid as i32), Signal::SIGKILL);
     tracing::info!(
-        "killpg MCP {name} ({stage}) pgid={pgid} ok={}",
+        "kill MCP {name} ({stage}) pid={pid} ok={}",
         result.is_ok()
     );
 }
 #[cfg(not(unix))]
-fn killpg(_pgid: u32, name: &str, stage: &str) {
+fn kill_process(_pid: u32, name: &str, stage: &str) {
     tracing::info!("relying on Drop to kill MCP {name} ({stage})");
 }
 
