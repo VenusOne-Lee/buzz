@@ -9,6 +9,7 @@ import {
   APPROVAL_CHOICES,
   approvalActionForChoice,
   approvalToDecisionRequest,
+  channelApprovalFromEvent,
   choiceForKey,
   describeChoice,
   isExpired,
@@ -78,6 +79,62 @@ test("approvalToDecisionRequest builds a reviewed approval request", () => {
   assert.equal(request.meta.actor, "owner");
   assert.equal(request.expiresAt, "2026-01-01T00:00:00Z");
   assert.equal(request.choices.length, 3);
+});
+
+test("channelApprovalFromEvent returns null without a token tag", () => {
+  assert.equal(channelApprovalFromEvent({ content: "please approve" }), null);
+  assert.equal(
+    channelApprovalFromEvent({ tags: [["p", "abc"]], content: "x" }),
+    null,
+  );
+  assert.equal(channelApprovalFromEvent({ tags: [["t", "  "]] }), null);
+});
+
+test("channelApprovalFromEvent extracts token and builds a reviewed request", () => {
+  const descriptor = channelApprovalFromEvent({
+    content: "Send the launch email to 142 recipients?",
+    tags: [
+      ["t", "tok-123"],
+      ["actor", "Maya"],
+      ["tool", "gmail.send"],
+      ["target", "142 recipients"],
+      ["title", "Send launch email"],
+      ["expiration", "1767225600"],
+    ],
+  });
+  assert.equal(descriptor.token, "tok-123");
+  assert.equal(descriptor.request.kind, "approval");
+  assert.equal(descriptor.request.review, true);
+  assert.equal(descriptor.request.title, "Send launch email");
+  assert.equal(
+    descriptor.request.consequence,
+    "Send the launch email to 142 recipients?",
+  );
+  assert.equal(descriptor.request.meta.actor, "Maya");
+  assert.equal(descriptor.request.meta.tool, "gmail.send");
+  assert.equal(descriptor.request.meta.target, "142 recipients");
+  // 1767225600 unix seconds → 2026-01-01T00:00:00Z ISO.
+  assert.equal(descriptor.request.expiresAt, "2026-01-01T00:00:00.000Z");
+  assert.equal(descriptor.request.choices.length, 3);
+});
+
+test("channelApprovalFromEvent falls back to default copy and no meta", () => {
+  const descriptor = channelApprovalFromEvent({ tags: [["t", "tok-9"]] });
+  assert.equal(descriptor.token, "tok-9");
+  assert.equal(descriptor.request.title, "Approval required");
+  assert.match(descriptor.request.consequence, /needs your sign-off/);
+  assert.equal(descriptor.request.meta, undefined);
+  assert.equal(descriptor.request.expiresAt, null);
+});
+
+test("channelApprovalFromEvent ignores a non-numeric expiration", () => {
+  const descriptor = channelApprovalFromEvent({
+    tags: [
+      ["t", "tok-x"],
+      ["expiration", "soon"],
+    ],
+  });
+  assert.equal(descriptor.request.expiresAt, null);
 });
 
 test("DecisionCard renders a pending approval with its choices", () => {
