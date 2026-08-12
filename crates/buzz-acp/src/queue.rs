@@ -547,6 +547,51 @@ impl EventQueue {
         self.cancel_reasons.insert(batch.channel_id, reason);
     }
 
+    /// Force an interrupted channel's stored cancelled batch (from
+    /// [`requeue_as_cancelled`](Self::requeue_as_cancelled)) back into
+    /// ordinary fairness contention, instead of leaving it reachable only via
+    /// `flush_next()`'s lowest-priority "no channel has ready work" fallback.
+    ///
+    /// Without this, a busy multi-channel harness can starve a Stop'd turn
+    /// indefinitely — the fallback only fires once *every* channel's live
+    /// queue is empty. The owner's `resume_turn` observer control frame calls
+    /// this to make the interrupted channel competitive again right away.
+    ///
+    /// Events are pushed to the front of the channel's queue with a fresh
+    /// `received_at` (now) — the resume request is itself a new fairness
+    /// event, so it does not jump ahead of other channels' genuinely older
+    /// pending work. Returns `true` if a cancelled batch existed for
+    /// `channel_id` and was requeued; `false` if there was nothing to resume.
+    pub fn resume_cancelled_channel(&mut self, channel_id: Uuid) -> bool {
+        let Some(cancelled) = self.cancelled_batches.remove(&channel_id) else {
+            return false;
+        };
+        self.cancel_reasons.remove(&channel_id);
+
+        let now = Instant::now();
+        let queue = self.queues.entry(channel_id).or_default();
+        // Push to front in reverse order so original order is preserved.
+        for be in cancelled.into_iter().rev() {
+            queue.push_front(QueuedEvent {
+                channel_id,
+                event: be.event,
+                prompt_tag: be.prompt_tag,
+                received_at: now,
+            });
+        }
+        // Enforce per-channel cap: trim oldest (back) events if this pushed
+        // the queue over the limit.
+        while queue.len() > MAX_PENDING_PER_CHANNEL {
+            queue.pop_back();
+            tracing::warn!(
+                channel_id = %channel_id,
+                limit = MAX_PENDING_PER_CHANNEL,
+                "resume overflow — dropped oldest event to enforce cap"
+            );
+        }
+        true
+    }
+
     /// Returns `true` if any channel has pending events that are not in-flight
     /// and not throttled by `retry_after`.
     ///
@@ -3739,6 +3784,51 @@ mod tests {
         q.push(make_queued(ch, "plain"));
         let plain = q.flush_next().unwrap();
         assert_eq!(plain.cancel_reason, None);
+    }
+
+    #[test]
+    fn test_resume_cancelled_channel_requeues_for_immediate_fairness() {
+        let mut q = EventQueue::new(DedupMode::Queue);
+        let interrupted = Uuid::new_v4();
+        let busy = Uuid::new_v4();
+
+        // Interrupt `interrupted`: flush then cancel, releasing the channel.
+        q.push(make_queued(interrupted, "stopped-1"));
+        let batch = q.flush_next().unwrap();
+        q.requeue_as_cancelled(batch, CancelReason::Interrupt);
+        q.mark_complete(interrupted);
+
+        // A second, busier channel keeps producing new work so `interrupted`
+        // would never win the primary fairness path nor even reach the
+        // lowest-priority "queue is otherwise idle" fallback.
+        q.push(make_queued(busy, "busy-1"));
+        assert!(
+            q.flush_next().unwrap().channel_id == busy,
+            "the busy channel's own live queue entry should win fairness \
+             while `interrupted` has no live queue entry — only a cancelled batch"
+        );
+
+        // Resume forces `interrupted` back into ordinary contention.
+        assert!(q.resume_cancelled_channel(interrupted));
+        let resumed = q.flush_next().unwrap();
+        assert_eq!(resumed.channel_id, interrupted);
+        assert_eq!(resumed.events.len(), 1);
+        assert_eq!(resumed.events[0].event.content, "stopped-1");
+        assert!(
+            resumed.cancelled_events.is_empty(),
+            "resume re-enters via the ordinary queue, not the merge-annotation path"
+        );
+    }
+
+    #[test]
+    fn test_resume_cancelled_channel_no_interrupted_turn() {
+        let mut q = EventQueue::new(DedupMode::Queue);
+        let ch = Uuid::new_v4();
+
+        assert!(
+            !q.resume_cancelled_channel(ch),
+            "a channel with no cancelled batch has nothing to resume"
+        );
     }
 
     #[test]

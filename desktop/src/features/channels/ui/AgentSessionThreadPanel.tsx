@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   Clock3,
   Octagon,
+  RotateCcw,
   Settings,
   Sparkles,
   TerminalSquare,
@@ -24,7 +25,14 @@ import {
 } from "@/features/agents/ui/useObserverEvents";
 import { useAnchoredScroll } from "@/features/messages/ui/useAnchoredScroll";
 import { useStableArrayShallow } from "@/shared/hooks/useStableReference";
-import { cancelManagedAgentTurn } from "@/shared/api/agentControl";
+import {
+  cancelManagedAgentTurn,
+  resumeManagedAgentSession,
+} from "@/shared/api/agentControl";
+import {
+  isResumeEligible,
+  shouldClearStopRecord,
+} from "./agentResumeEligibility.logic";
 import type { Channel } from "@/shared/api/types";
 import { useEscapeKey } from "@/shared/hooks/useEscapeKey";
 import { useIsThreadPanelOverlay } from "@/shared/hooks/use-mobile";
@@ -169,6 +177,38 @@ export function AgentSessionThreadPanel({
     [rawFeedScopeKey],
   );
 
+  // --- Resume-a-dropped-thread affordance ---
+  // Local, session-scoped memory of a confirmed Stop (`cancel_turn`) send.
+  // Scoped by the same (agent, channel) key as the raw-feed toggle above, so
+  // switching the panel to a different agent/channel never carries a stale
+  // "interrupted" record across sessions — Resume can only ever re-enter the
+  // exact session whose Stop was sent. See agentResumeEligibility.logic.ts.
+  const [stopRecord, setStopRecord] = React.useState<{
+    scopeKey: string;
+    at: number;
+  } | null>(null);
+  const stoppedAt =
+    stopRecord && stopRecord.scopeKey === rawFeedScopeKey
+      ? stopRecord.at
+      : null;
+  const resumeEligible = isResumeEligible({
+    canInterruptTurn,
+    isWorking,
+    latestActivityAt,
+    stoppedAt,
+  });
+  // Forget the Stop record once the session goes live again (Resume, a fresh
+  // @mention, or anything else that starts a new turn) so a stale Resume
+  // control never lingers past the state it described.
+  React.useEffect(() => {
+    if (
+      stopRecord?.scopeKey === rawFeedScopeKey &&
+      shouldClearStopRecord({ isWorking, stoppedAt: stopRecord.at })
+    ) {
+      setStopRecord(null);
+    }
+  }, [isWorking, rawFeedScopeKey, stopRecord]);
+
   // --- Transcript block ids for default Activity mode ---
   // Derive the same display-block keys the inner AgentSessionTranscriptList
   // renders as `data-message-id` so useAnchoredScroll anchors on real DOM rows
@@ -257,6 +297,7 @@ export function AgentSessionThreadPanel({
 
     try {
       await cancelManagedAgentTurn(agent.pubkey, channel.id);
+      setStopRecord({ scopeKey: rawFeedScopeKey, at: Date.now() });
       toast.success(
         `Stop signal sent to ${agent.name}. It may take a moment to respond.`,
       );
@@ -265,6 +306,28 @@ export function AgentSessionThreadPanel({
         error instanceof Error
           ? error.message
           : `Failed to stop ${agent.name}'s current turn.`,
+      );
+    }
+  }
+
+  async function handleResumeTurn() {
+    if (!channel) {
+      return;
+    }
+
+    try {
+      // Correlated by channel.id — the same field cancelManagedAgentTurn
+      // uses — so the harness re-enters only this session's cancelled run;
+      // no other channel's work resumes.
+      await resumeManagedAgentSession(agent.pubkey, channel.id);
+      toast.success(
+        `Resume signal sent to ${agent.name}. It may take a moment to pick back up.`,
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : `Failed to resume ${agent.name}'s interrupted turn.`,
       );
     }
   }
@@ -414,6 +477,31 @@ export function AgentSessionThreadPanel({
                 ) : null}
               </span>
             </DropdownMenuItem>
+            <DropdownMenuItem
+              className="items-start gap-3"
+              data-testid="agent-session-resume-turn-menu-item"
+              disabled={!resumeEligible}
+              onSelect={() => {
+                void handleResumeTurn();
+              }}
+              title={
+                resumeEligible
+                  ? "Re-enter this interrupted turn. No other work resumes."
+                  : "Available after this session's turn has been stopped."
+              }
+            >
+              <RotateCcw className="mt-0.5 h-4 w-4 text-primary" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">
+                  Resume interrupted turn
+                </span>
+                {!resumeEligible ? (
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    Available after this session's turn has been stopped.
+                  </span>
+                ) : null}
+              </span>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}
@@ -460,6 +548,31 @@ export function AgentSessionThreadPanel({
               {lastUpdatedLabel}
             </span>
           </div>
+          {resumeEligible && isLive ? (
+            <div className="motion-enter-conversation mt-1 flex items-center gap-1.5">
+              <span
+                className="text-2xs font-medium text-warning"
+                data-testid="agent-session-interrupted-label"
+              >
+                Interrupted
+              </span>
+              <Button
+                aria-label={`Resume ${agent.name}'s interrupted turn`}
+                className="gap-1 text-2xs text-primary hover:text-primary [&_svg]:size-3"
+                data-testid="agent-session-resume-turn"
+                onClick={() => {
+                  void handleResumeTurn();
+                }}
+                size="xs"
+                title="Re-enter this interrupted turn. No other work resumes."
+                type="button"
+                variant="ghost"
+              >
+                <RotateCcw />
+                Resume
+              </Button>
+            </div>
+          ) : null}
         </div>
       </AuxiliaryPanelHeaderGroup>
       {agentHeaderActions}

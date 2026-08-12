@@ -838,6 +838,7 @@ fn handle_relay_observer_control_event(
     keys: &nostr::Keys,
     event: nostr::Event,
     pool: &mut AgentPool,
+    queue: &mut EventQueue,
     observer: Option<&observer::ObserverHandle>,
     owner_pubkey_hex: &str,
 ) {
@@ -885,6 +886,9 @@ fn handle_relay_observer_control_event(
         Some("switch_model") => {
             handle_switch_model_control(&payload, pool, observer);
         }
+        Some("resume_turn") => {
+            handle_resume_turn_control(&payload, queue, observer);
+        }
         _ => {
             tracing::debug!(payload = %payload, "ignoring unknown observer control frame");
         }
@@ -920,6 +924,51 @@ fn handle_cancel_turn_control(
             },
             serde_json::json!({
                 "type": "cancel_turn",
+                "status": status,
+            }),
+        );
+    }
+}
+
+/// Handle a `resume_turn` control frame: force an interrupted (Stop'd) turn
+/// back into ordinary fairness contention rather than leaving it reachable
+/// only via the queue's lowest-priority "everything else is idle" fallback
+/// (see [`queue::EventQueue::resume_cancelled_channel`]). This is the
+/// continuity affordance for a dropped/interrupted work object — it re-enters
+/// only the correlated channel's cancelled turn, never any other channel's
+/// work.
+fn handle_resume_turn_control(
+    payload: &serde_json::Value,
+    queue: &mut EventQueue,
+    observer: Option<&observer::ObserverHandle>,
+) {
+    let Some(channel_id) = payload
+        .get("channelId")
+        .and_then(|value| value.as_str())
+        .and_then(|value| value.parse::<Uuid>().ok())
+    else {
+        tracing::warn!("observer resume_turn control frame missing valid channelId");
+        return;
+    };
+
+    let resumed = queue.resume_cancelled_channel(channel_id);
+    let status = if resumed {
+        "resumed"
+    } else {
+        "no_interrupted_turn"
+    };
+    if let Some(observer) = observer {
+        observer.emit(
+            "control_result",
+            None,
+            &observer::ObserverContext {
+                channel_id: Some(channel_id.to_string()),
+                session_id: None,
+                turn_id: None,
+                started_at: None,
+            },
+            serde_json::json!({
+                "type": "resume_turn",
                 "status": status,
             }),
         );
@@ -1960,7 +2009,7 @@ async fn tokio_main() -> Result<()> {
                     match control_event {
                         Some(event) => {
                             if let Some(ref owner_hex) = owner_cache.pubkey {
-                                handle_relay_observer_control_event(&config.keys, event, &mut pool, observer.as_ref(), owner_hex);
+                                handle_relay_observer_control_event(&config.keys, event, &mut pool, &mut queue, observer.as_ref(), owner_hex);
                             } else {
                                 tracing::warn!("observer control frame received but no owner resolved — dropping");
                             }
