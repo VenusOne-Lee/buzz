@@ -440,6 +440,39 @@ impl AcpClient {
         }
     }
 
+    /// Kill any leftover descendant processes still sitting in this agent's
+    /// process group that are not the tracked child itself — e.g. the
+    /// wrapped `claude` binary, or an MCP server subprocess it launched
+    /// (`buzz-dev-mcp`), left behind when the agent's own internal cleanup
+    /// didn't fully tear down after a `session/cancel`.
+    ///
+    /// Call this when returning a *healthy* agent to the pool (turn ended
+    /// via a clean stop or an acknowledged cancel), not when the agent
+    /// itself is being killed — [`shutdown`](Self::shutdown) already SIGKILLs
+    /// the whole process group in that case, which covers descendants too.
+    ///
+    /// We are not the parent of these processes (they are grandchildren or
+    /// deeper), so we cannot `wait()` them — the kernel reparents orphans to
+    /// PID 1, which reaps them once killed. A `SIGKILL` is enough here.
+    pub fn reap_stray_descendants(&self) {
+        let Some(pid) = self.child.id() else {
+            return;
+        };
+        for stray in stray_process_group_members(pid) {
+            tracing::warn!(
+                stray_pid = stray,
+                group_leader = pid,
+                "reaping stray descendant left behind after turn completion"
+            );
+            #[cfg(unix)]
+            {
+                use nix::sys::signal::{kill, Signal};
+                use nix::unistd::Pid;
+                let _ = kill(Pid::from_raw(stray as i32), Signal::SIGKILL);
+            }
+        }
+    }
+
     /// Spawn the agent binary as a subprocess and connect to its stdio pipes.
     ///
     /// `has_generated_codex_config` must be true when `codex_network_env()` successfully
@@ -2230,6 +2263,50 @@ fn kill_process_group(pid: u32) -> bool {
 
     // pid == pgid because the child was spawned with process_group(0).
     killpg(Pid::from_raw(pid as i32), Signal::SIGKILL).is_ok()
+}
+
+/// PIDs currently in process group `pgid`, other than `pgid` itself (the
+/// group leader — our directly-tracked child). Reads `/proc` directly since
+/// there is no libc wrapper for "list processes in a process group".
+#[cfg(unix)]
+fn stray_process_group_members(pgid: u32) -> Vec<u32> {
+    let mut strays = Vec::new();
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return strays;
+    };
+    for entry in entries.flatten() {
+        let Ok(pid) = entry.file_name().to_string_lossy().parse::<u32>() else {
+            continue;
+        };
+        if pid == pgid {
+            continue;
+        }
+        let Ok(stat) = std::fs::read_to_string(entry.path().join("stat")) else {
+            continue;
+        };
+        if process_group_of_stat(&stat) == Some(pgid) {
+            strays.push(pid);
+        }
+    }
+    strays
+}
+
+/// Fallback for non-Unix: process-group enumeration not available.
+#[cfg(not(unix))]
+fn stray_process_group_members(_pgid: u32) -> Vec<u32> {
+    Vec::new()
+}
+
+/// Parse the `pgrp` field out of a `/proc/[pid]/stat` line.
+///
+/// Format: `pid (comm) state ppid pgrp session ...`. The `comm` field is
+/// parenthesized and may itself contain spaces or parens (a process can name
+/// itself anything), so this splits on the *last* `)` rather than counting
+/// whitespace-delimited fields from the start.
+fn process_group_of_stat(stat: &str) -> Option<u32> {
+    let (_, after_comm) = stat.rsplit_once(')')?;
+    // Fields after comm: state(0) ppid(1) pgrp(2) ...
+    after_comm.split_whitespace().nth(2)?.parse().ok()
 }
 
 /// Fallback for non-Unix: process-group kill not available.
@@ -4609,6 +4686,111 @@ mod tests {
         assert!(
             msg.contains("sandbox_workspace_write"),
             "error must mention sandbox_workspace_write"
+        );
+    }
+
+    #[test]
+    fn process_group_of_stat_parses_pgrp_field() {
+        // Ordinary comm, no embedded parens/spaces.
+        assert_eq!(
+            process_group_of_stat("1234 (sleep) S 1 5678 5678 0 -1 4194560 ..."),
+            Some(5678)
+        );
+    }
+
+    #[test]
+    fn process_group_of_stat_handles_comm_with_parens_and_spaces() {
+        // /proc comm is whatever the process named itself — can contain
+        // spaces and parens. Must split on the LAST ')', not the first.
+        assert_eq!(
+            process_group_of_stat("999 (my (weird) proc) R 1 42 42 0 -1 4194304 ..."),
+            Some(42)
+        );
+    }
+
+    #[test]
+    fn process_group_of_stat_returns_none_for_malformed_input() {
+        assert_eq!(process_group_of_stat("not a stat line"), None);
+        assert_eq!(process_group_of_stat(""), None);
+        assert_eq!(process_group_of_stat("123 (ok) S 1"), None); // too short after comm
+    }
+
+    /// Read the state character (field 3) out of `/proc/[pid]/stat`, the
+    /// same way `process_group_of_stat` reads pgrp — used only by this test
+    /// to distinguish "still running" from "zombie" from "gone".
+    #[cfg(unix)]
+    fn proc_state(pid: u32) -> Option<char> {
+        let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+        let (_, after_comm) = stat.rsplit_once(')')?;
+        after_comm.split_whitespace().next()?.chars().next()
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn reap_stray_descendants_kills_the_stray_but_not_the_tracked_child() {
+        // Non-interactive `bash -c` has job control off, so `&`-backgrounded
+        // children stay in the script's own process group — the same shape
+        // as claude-agent-acp's real descendants (`claude`, `buzz-dev-mcp`)
+        // observed live on the fleet box.
+        // `exec` replaces bash's own process image in place (same pid, no
+        // fork), so the tracked child's fate is independent of the
+        // backgrounded `sleep 300` — killing the stray must not touch it.
+        // Without `exec`, bash would `wait` on (or simply outlive alongside)
+        // its own background job and the two lifetimes would be entangled.
+        let client = spawn_script("sleep 300 & exec sleep 301").await;
+        let main_pid = client.child.id().expect("tracked child has a pid");
+
+        // Give the background `sleep` time to actually fork before scanning.
+        let stray_pid = 'wait_for_fork: {
+            for _ in 0..50 {
+                let strays = stray_process_group_members(main_pid);
+                if let [stray] = strays.as_slice() {
+                    break 'wait_for_fork *stray;
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+            }
+            panic!("background sleep never showed up as a stray group member");
+        };
+
+        client.reap_stray_descendants();
+
+        // We're not the stray's parent, so it may sit as a zombie until bash
+        // (its real parent) reaps it — either "gone" or "zombie" counts as
+        // successfully killed. The tracked child must stay alive throughout.
+        for _ in 0..50 {
+            let stray_dead = proc_state(stray_pid).is_none_or(|s| s == 'Z');
+            if stray_dead {
+                assert_ne!(
+                    proc_state(main_pid),
+                    None,
+                    "tracked child must not be killed by reap_stray_descendants"
+                );
+                assert_ne!(
+                    proc_state(main_pid),
+                    Some('Z'),
+                    "tracked child must not be killed by reap_stray_descendants"
+                );
+                return;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        }
+        panic!("stray descendant was not reaped within 1s of reap_stray_descendants()");
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn reap_stray_descendants_is_a_noop_with_no_stray_members() {
+        let client = spawn_script("sleep 300").await;
+        let main_pid = client.child.id().expect("tracked child has a pid");
+        assert!(stray_process_group_members(main_pid).is_empty());
+
+        client.reap_stray_descendants();
+
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        assert_eq!(
+            proc_state(main_pid),
+            Some('S'),
+            "tracked child must still be running when there was nothing to reap"
         );
     }
 }
