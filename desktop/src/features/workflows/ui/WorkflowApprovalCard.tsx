@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 import { useApprovalMutation } from "@/features/workflows/hooks";
 import { DecisionCard } from "@/features/workflows/ui/DecisionCard";
 import {
@@ -34,11 +36,18 @@ export function WorkflowApprovalCard({ approval }: WorkflowApprovalCardProps) {
             choice,
             note,
           );
-          approvalMutation.mutate({
-            token: approval.token,
-            action,
-            note: composed || undefined,
-          });
+          approvalMutation.mutate(
+            {
+              token: approval.token,
+              action,
+              note: composed || undefined,
+            },
+            {
+              onError: () => {
+                toast.error("Could not submit decision. Please try again.");
+              },
+            },
+          );
         }}
         pending={approvalMutation.isPending}
         request={request}

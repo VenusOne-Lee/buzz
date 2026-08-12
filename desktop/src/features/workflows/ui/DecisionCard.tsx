@@ -165,20 +165,16 @@ export function DecisionCard({
   const entries = metaEntries(request);
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: keyboard shortcuts augment the always-present decision buttons.
-    <div
+    <fieldset
       aria-label={request.title}
       className={cn(
         "rounded-lg border p-3 transition-colors",
-        review
-          ? "border-amber-500/30 bg-amber-500/5"
-          : "border-border bg-card",
+        review ? "border-amber-500/30 bg-amber-500/5" : "border-border bg-card",
         className,
       )}
       data-decision-kind={request.kind}
       data-testid="decision-card"
       onKeyDown={handleKeyDown}
-      role="group"
     >
       <div className="mb-1.5 flex items-center gap-1.5">
         {review ? <ShieldAlert className="h-3.5 w-3.5 text-amber-600" /> : null}
@@ -251,6 +247,6 @@ export function DecisionCard({
           value={note}
         />
       ) : null}
-    </div>
+    </fieldset>
   );
 }

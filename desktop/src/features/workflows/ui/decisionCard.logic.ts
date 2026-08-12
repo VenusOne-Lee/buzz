@@ -97,7 +97,10 @@ export function approvalActionForChoice(
   if (choice.type === "deny") {
     return { action: "deny", note: composeNote("Denied", userNote) };
   }
-  return { action: "grant", note: composeNote(describeChoice(choice), userNote) };
+  return {
+    action: "grant",
+    note: composeNote(describeChoice(choice), userNote),
+  };
 }
 
 /**
