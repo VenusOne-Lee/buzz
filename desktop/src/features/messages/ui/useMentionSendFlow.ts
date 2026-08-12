@@ -10,6 +10,7 @@ import {
   useStartManagedAgentMutation,
 } from "@/features/agents/hooks";
 import { resolvePersonaRuntime } from "@/features/agents/lib/resolvePersonaRuntime";
+import { useGlobalAgentConfig } from "@/features/agents/useGlobalAgentConfig";
 import { useAddChannelMembersMutation } from "@/features/channels/hooks";
 import { filterEffectiveExplicitAgentPubkeys } from "@/features/messages/lib/effectiveExplicitAgentPubkeys";
 import {
@@ -34,12 +35,11 @@ import { normalizePubkey, truncatePubkey } from "@/shared/lib/pubkey";
 import { buildCustomEmojiTags } from "@/shared/lib/customEmojiTags";
 import {
   getErrorMessage,
-  isManagedAgentRunning,
-  isProviderBackedAgent,
   MENTION_REFERENCE_TAG,
   mergeOutgoingTagsWithReferenceMentions,
   type PendingNonMemberMentionSend,
   type SendMessageWithMentionFlowInput,
+  shouldStartManagedAgentForMention,
   uniqueNormalizedPubkeys,
 } from "./useMentionSendFlow.helpers";
 type UseMentionSendFlowOptions = {
@@ -144,6 +144,7 @@ export function useMentionSendFlow({
   const availableRuntimesQuery = useAvailableAcpRuntimes();
   const managedAgentsQuery = useManagedAgentsQuery();
   const startAgentMutation = useStartManagedAgentMutation();
+  const { globalConfig } = useGlobalAgentConfig();
   const getManagedAgentsByPubkey = React.useCallback(async () => {
     const agents =
       managedAgentsQuery.data ??
@@ -196,6 +197,7 @@ export function useMentionSendFlow({
       ]);
       const errors: string[] = [];
       const pubkeys: string[] = [];
+      const clientOnlyMode = globalConfig.client_only_mode ?? false;
 
       for (const pubkey of uniqueNormalizedPubkeys(mentionPubkeys)) {
         const agent = managedAgentsByPubkey.get(pubkey);
@@ -205,11 +207,7 @@ export function useMentionSendFlow({
 
         try {
           if (participantPubkeys.has(pubkey)) {
-            if (isProviderBackedAgent(agent)) {
-              if (agent.status !== "deployed") {
-                await startAgentMutation.mutateAsync(agent.pubkey);
-              }
-            } else if (!isManagedAgentRunning(agent)) {
+            if (shouldStartManagedAgentForMention(agent, clientOnlyMode)) {
               await startAgentMutation.mutateAsync(agent.pubkey);
             }
           } else {
@@ -238,6 +236,7 @@ export function useMentionSendFlow({
     [
       attachAgentMutation,
       getManagedAgentsByPubkey,
+      globalConfig.client_only_mode,
       mentions.memberPubkeys,
       startAgentMutation,
     ],
