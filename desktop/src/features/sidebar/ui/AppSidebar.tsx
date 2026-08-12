@@ -32,6 +32,7 @@ import {
   AppSidebarPinnedHeader,
   AppSidebarPrimaryMenu,
 } from "@/features/sidebar/ui/AppSidebarPinnedHeader";
+import { AgentsRosterGroup } from "@/features/sidebar/ui/AgentsRosterGroup";
 import { MoreUnreadButton } from "@/features/sidebar/ui/MoreUnreadButton";
 import { SidebarSection } from "@/features/sidebar/ui/SidebarSection";
 import {
@@ -221,6 +222,7 @@ export function AppSidebar({
     channels: false,
     forums: false,
     directMessages: false,
+    agents: false,
   });
 
   const toggleCollapsedGroup = React.useCallback(
@@ -737,6 +739,11 @@ export function AppSidebar({
                     mutedChannelIds={mutedChannelIds}
                     onMuteChannel={onMuteChannel}
                     onUnmuteChannel={onUnmuteChannel}
+                  />
+                  <AgentsRosterGroup
+                    currentPubkey={currentPubkey}
+                    isCollapsed={collapsedGroups.agents}
+                    onToggleCollapsed={() => toggleCollapsedGroup("agents")}
                   />
                 </>
               ) : null}

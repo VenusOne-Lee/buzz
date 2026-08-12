@@ -102,6 +102,18 @@ export function useAppNavigation() {
     [commitNavigation],
   );
 
+  const goAgentProfile = React.useCallback(
+    (pubkey: string, behavior?: NavigationBehavior) =>
+      commitNavigation(
+        {
+          to: "/agents",
+          search: { profile: pubkey },
+        },
+        behavior,
+      ),
+    [commitNavigation],
+  );
+
   const goProjects = React.useCallback(
     (behavior?: NavigationBehavior) =>
       commitNavigation(
@@ -321,6 +333,7 @@ export function useAppNavigation() {
     closeForumPost,
     closeSettings,
     closeWorkflowDetail,
+    goAgentProfile,
     goAgents,
     goChannel,
     goForumPost,
