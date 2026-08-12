@@ -150,7 +150,7 @@ export function DecisionCard({
 
   const decide = (choice: DecisionChoice) => onDecide(choice, note);
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLFieldSetElement>) => {
     const target = event.target as HTMLElement;
     if (target.tagName === "TEXTAREA" || event.metaKey || event.ctrlKey) {
       return;
