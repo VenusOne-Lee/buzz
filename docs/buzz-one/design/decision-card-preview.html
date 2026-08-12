@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision Card — in-app preview</title>
+<style>
+/* Static preview of the implemented DecisionCard as it renders inside the real
+   Buzz desktop app (Catppuccin theme + semantic tokens). Values mirror
+   desktop/src/shared/styles/globals/theme.css and the component's Tailwind
+   classes. This is a preview of shipped code, not the component itself. */
+:root{
+  --background:#e6e9ef; --foreground:#4c4f69; --muted-foreground:#6c6f85;
+  --border:#bcc0cc; --card:#eff1f5; --muted:#ccd0da; --primary:#8839ef;
+  --amber:#d97706; --amber-strong:#b45309; --emerald:#059669;
+  --amber-bg:rgba(217,119,6,.06); --amber-border:rgba(217,119,6,.30);
+  --page:#dce0e8;
+}
+.dark{
+  --background:#24273a; --foreground:#cad3f5; --muted-foreground:#a5adcb;
+  --border:#494d64; --card:#1e2030; --muted:#363a4f; --primary:#c6a0f6;
+  --amber:#f5a623; --amber-strong:#f9c74f; --emerald:#a6da95;
+  --amber-bg:rgba(245,166,35,.08); --amber-border:rgba(245,166,35,.28);
+  --page:#181926;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:var(--page);color:var(--foreground);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1100px;margin:0 auto;padding:34px 28px 60px}
+h1{font-size:22px;letter-spacing:-.02em;margin:0 0 4px}
+.sub{color:var(--muted-foreground);font-size:14px;margin:0 0 26px;max-width:70ch;line-height:1.5}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media (max-width:820px){.grid{grid-template-columns:1fr}}
+.pane{border-radius:16px;padding:22px;background:var(--background);border:1px solid var(--border)}
+.pane.dark{background:var(--page)}
+.panelabel{font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted-foreground);margin-bottom:14px}
+.stackcards{display:flex;flex-direction:column;gap:16px}
+
+/* ---- DecisionCard (mirrors DecisionCard.tsx) ---- */
+.dc{border-radius:.5rem;border:1px solid var(--amber-border);background:var(--amber-bg);padding:.75rem}
+.dc--q{border-color:var(--border);background:var(--card)}
+.dc__badge{display:flex;align-items:center;gap:.375rem;margin-bottom:.375rem}
+.dc__badge svg{width:14px;height:14px;color:var(--amber)}
+.dc__badge span{font-size:.6875rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--amber)}
+.dc--q .dc__badge span{color:var(--muted-foreground)}
+.dc__title{font-size:.875rem;font-weight:500;line-height:1.35;margin:0}
+.dc__conseq{font-size:.75rem;line-height:1.6;color:var(--muted-foreground);margin:.25rem 0 0}
+.dc__meta{display:flex;flex-wrap:wrap;gap:.25rem 1rem;margin-top:.5rem;font-size:.6875rem;color:var(--muted-foreground)}
+.dc__meta b{font-weight:500;color:color-mix(in srgb,var(--foreground) 70%,transparent)}
+.dc__choices{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin-top:.75rem}
+.btn{display:inline-flex;align-items:center;gap:.375rem;height:2rem;padding:0 .75rem;border-radius:.5rem;
+  font-size:.75rem;font-weight:500;border:1px solid transparent;cursor:pointer;white-space:nowrap;font-family:inherit}
+.btn svg{width:14px;height:14px}
+.btn--allow{background:var(--amber);color:#fff}
+.btn--mission{background:transparent;border-color:var(--amber-border);color:var(--amber-strong)}
+.dark .btn--mission{color:var(--amber-strong)}
+.btn--deny{background:var(--background);border-color:var(--border);color:var(--foreground)}
+.dark .btn--deny{background:transparent}
+.btn--primary{background:var(--primary);color:#fff}
+.btn--outline{background:var(--background);border-color:var(--border);color:var(--foreground)}
+.dark .btn--outline{background:transparent}
+.btn--ghost{background:transparent;color:var(--muted-foreground);margin-left:auto}
+.dc__hints{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .75rem;margin-top:.5rem;
+  font-size:.6875rem;color:var(--muted-foreground)}
+.dc__hints span{display:inline-flex;align-items:center;gap:.25rem}
+kbd{border:1px solid var(--border);background:var(--background);border-radius:4px;padding:0 .25rem;
+  font-family:ui-monospace,monospace;font-size:.625rem;line-height:1rem;color:var(--muted-foreground)}
+/* resolved condensed */
+.dc--done{display:flex;align-items:center;gap:.5rem;border:1px solid var(--border);background:color-mix(in srgb,var(--muted) 30%,transparent);
+  border-radius:.5rem;padding:.5rem .75rem;font-size:.75rem;color:var(--muted-foreground)}
+.dc--done svg{width:14px;height:14px;color:var(--emerald);flex:none}
+.dc--done b{color:var(--foreground);font-weight:500}
+.legend{margin-top:26px;font-size:12.5px;color:var(--muted-foreground);line-height:1.6}
+.legend code{font-family:ui-monospace,monospace;font-size:11.5px;background:var(--card);border:1px solid var(--border);
+  border-radius:5px;padding:1px 5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Decision &amp; Approval — implemented component</h1>
+  <p class="sub">The <code style="font-family:ui-monospace,monospace">DecisionCard</code> as it renders inside the real Buzz desktop app, resolving through the live <code style="font-family:ui-monospace,monospace">useApprovalMutation</code> grant/deny path. Amber marks a consequential "Auto Review" action; the question variant and resolved state reuse the same primitive. Shown in the app's Catppuccin light and dark themes.</p>
+
+  <div class="grid">
+    <!-- LIGHT -->
+    <div class="pane">
+      <div class="panelabel">Catppuccin Latte · light</div>
+      <div class="stackcards">
+        <!-- approval pending -->
+        <div class="dc">
+          <div class="dc__badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+            <span>Approval</span>
+          </div>
+          <p class="dc__title">Approval required</p>
+          <p class="dc__conseq">This action needs your sign-off before the agent continues. Unanswered requests default to deny.</p>
+          <div class="dc__meta"><span><b>Actor</b> owner</span><span><b>Tool</b> Gmail</span><span><b>Scope</b> 142 recipients</span><span><b>Expires</b> 09:36</span></div>
+          <div class="dc__choices">
+            <button class="btn btn--allow">Allow once</button>
+            <button class="btn btn--mission">Allow for the mission</button>
+            <button class="btn btn--deny">Deny</button>
+            <button class="btn btn--ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>Reply</button>
+          </div>
+          <div class="dc__hints"><span><kbd>↵</kbd> Allow</span><span><kbd>M</kbd> Mission</span><span><kbd>D</kbd> Deny</span></div>
+        </div>
+        <!-- resolved -->
+        <div class="dc--done">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span><b>Allowed for the mission</b> · Mika Rivera · 09:14</span>
+        </div>
+        <!-- question -->
+        <div class="dc dc--q">
+          <div class="dc__badge"><span>Question</span></div>
+          <p class="dc__title">Which tone should I lead with for Series B+ openers?</p>
+          <div class="dc__choices">
+            <button class="btn btn--outline">ROI-first</button>
+            <button class="btn btn--outline">Peer proof</button>
+            <button class="btn btn--outline">Vision-led</button>
+            <button class="btn btn--ghost">Reply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DARK -->
+    <div class="pane dark dark" style="">
+      <div class="panelabel">Catppuccin Macchiato · dark</div>
+      <div class="stackcards dark">
+        <div class="dc">
+          <div class="dc__badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+            <span>Approval</span>
+          </div>
+          <p class="dc__title">Approval required</p>
+          <p class="dc__conseq">This action needs your sign-off before the agent continues. Unanswered requests default to deny.</p>
+          <div class="dc__meta"><span><b>Actor</b> owner</span><span><b>Tool</b> Gmail</span><span><b>Scope</b> 142 recipients</span><span><b>Expires</b> 09:36</span></div>
+          <div class="dc__choices">
+            <button class="btn btn--allow">Allow once</button>
+            <button class="btn btn--mission">Allow for the mission</button>
+            <button class="btn btn--deny">Deny</button>
+            <button class="btn btn--ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>Reply</button>
+          </div>
+          <div class="dc__hints"><span><kbd>↵</kbd> Allow</span><span><kbd>M</kbd> Mission</span><span><kbd>D</kbd> Deny</span></div>
+        </div>
+        <div class="dc--done">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span><b>Allowed for the mission</b> · Mika Rivera · 09:14</span>
+        </div>
+        <div class="dc dc--q">
+          <div class="dc__badge"><span>Question</span></div>
+          <p class="dc__title">Which tone should I lead with for Series B+ openers?</p>
+          <div class="dc__choices">
+            <button class="btn btn--outline">ROI-first</button>
+            <button class="btn btn--outline">Peer proof</button>
+            <button class="btn btn--outline">Vision-led</button>
+            <button class="btn btn--ghost">Reply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="legend">Implemented in <code>desktop/src/features/workflows/ui/</code>: <code>DecisionCard.tsx</code> (presentational, keyboard-first), <code>decisionCard.logic.ts</code> (choice → real grant/deny mapping, unit-tested), and <code>WorkflowApprovalCard.tsx</code> (rewired to render this card and resolve through <code>useApprovalMutation</code>). "Allow once" and "Allow for the mission" both grant; the scope is preserved in the auditable note.</p>
+</div>
+</body>
+</html>
