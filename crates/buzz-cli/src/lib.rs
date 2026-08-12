@@ -2102,6 +2102,7 @@ mod tests {
             "reactions",
             "repos",
             "social",
+            "spine",
             "upload",
             "users",
             "workflows",
