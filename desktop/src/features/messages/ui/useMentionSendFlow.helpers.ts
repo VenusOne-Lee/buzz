@@ -74,3 +74,21 @@ export function isManagedAgentRunning(agent: ManagedAgent) {
 export function isProviderBackedAgent(agent: ManagedAgent) {
   return agent.backend.type === "provider";
 }
+
+/**
+ * Whether a managed-agent mention should trigger a local spawn attempt.
+ * Under client_only_mode this Desktop never runs local agent processes, so
+ * spawn is skipped outright rather than attempted and surfaced as a failure
+ * — the remote fleet copy is expected to answer over the relay instead.
+ */
+export function shouldStartManagedAgentForMention(
+  agent: ManagedAgent,
+  clientOnlyMode: boolean,
+) {
+  if (clientOnlyMode) {
+    return false;
+  }
+  return isProviderBackedAgent(agent)
+    ? agent.status !== "deployed"
+    : !isManagedAgentRunning(agent);
+}
