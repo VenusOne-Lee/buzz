@@ -209,7 +209,11 @@ test("@ trigger prioritizes channel members before runnable personas and other m
 
   const dropdown = autocomplete(page);
   await expect(dropdown).toBeVisible();
-  await expect(dropdown.getByText("alice")).toHaveCount(0);
+  // alice is a channel-member agent (a `respond_to: "anyone"` relay agent in
+  // general) that is not in this install's local managed roster. She is
+  // mentionable and now appears — the mention autocomplete no longer drops
+  // channel-member agents just because they live outside the local roster.
+  await expect(dropdown.getByText("alice")).toBeVisible();
   await expect(dropdown.getByText("bob")).toBeVisible();
   await expect(dropdown.getByText("Fizz")).toBeVisible();
   await expect(dropdown.getByText("charlie")).toBeVisible();

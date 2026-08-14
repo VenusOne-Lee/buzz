@@ -16,7 +16,6 @@ import {
   coalesceAutocompleteCandidatesByKey,
   getMentionableAgentPubkeys,
   getSharedChannelIds,
-  isAgentIdentityInManagedList,
   shouldHideAgentFromMentions,
 } from "@/features/agents/lib/agentAutocompleteEligibility";
 import {
@@ -246,9 +245,10 @@ export function useMentions(
       if (isArchivedDiscovery(pubkey)) {
         return;
       }
-      if (!isAgentIdentityInManagedList(candidate, managedAgentPubkeys)) {
-        return;
-      }
+      // `shouldHideAgentFromMentions` is the sole authority here. A prior
+      // `isAgentIdentityInManagedList` gate dropped agents absent from *this
+      // install's* local roster, hiding channel-member agents hosted
+      // elsewhere (the fleet box) that are genuinely mentionable.
       if (
         shouldHideAgentFromMentions({
           isAgent: candidate.isAgent === true,
@@ -420,7 +420,6 @@ export function useMentions(
     managedAgentNamesByPubkey,
     managedAgentPersonaIds,
     managedAgentPersonaIdsByPubkey,
-    managedAgentPubkeys,
     managedAgentsQuery.data,
     memberPubkeys,
     members,
