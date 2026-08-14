@@ -243,6 +243,59 @@ test("shouldHideAgentFromMentions: normalizes the pubkey before lookup", () => {
   );
 });
 
+test("mention pipeline: a relay agent shared via a common channel is mentionable even when it is not in the local managed roster (fleet regression)", () => {
+  const FLEET_AGENT = PUB_D;
+  const SHARED_CHANNEL = "channel-shared";
+  // This install has no local managed agents — the fleet agents live on
+  // another host (the fleet box) and are only known via the relay directory.
+  const managedAgentPubkeys = new Set();
+  const relayAgents = [
+    {
+      pubkey: FLEET_AGENT,
+      respondTo: "anyone",
+      respondToAllowlist: [],
+      channelIds: [SHARED_CHANNEL],
+    },
+  ];
+  const sharedChannelIds = new Set([SHARED_CHANNEL]);
+
+  const mentionableAgentPubkeys = getMentionableAgentPubkeys({
+    currentPubkey: CURRENT_PUBKEY,
+    managedAgentPubkeys,
+    relayAgents,
+    sharedChannelIds,
+  });
+  // `directoryAgentPubkeys` mirrors the hook: every relay-directory pubkey.
+  const directoryAgentPubkeys = new Set(
+    relayAgents.map((agent) => agent.pubkey),
+  );
+
+  // The fleet agent is shared with the user through a common channel, so it
+  // belongs in the mentionable set and the visibility gate shows it.
+  assert.equal(mentionableAgentPubkeys.has(FLEET_AGENT), true);
+  assert.equal(
+    shouldHideAgentFromMentions({
+      isAgent: true,
+      isMember: true,
+      pubkey: FLEET_AGENT,
+      mentionableAgentPubkeys,
+      directoryAgentPubkeys,
+    }),
+    false,
+  );
+
+  // Regression guard: the removed `isAgentIdentityInManagedList` gate keyed on
+  // the narrower LOCAL managed set, so it dropped this fleet agent before the
+  // visibility gate above could run. Keep the mention pipeline off that gate.
+  assert.equal(
+    isAgentIdentityInManagedList(
+      { isAgent: true, pubkey: FLEET_AGENT },
+      managedAgentPubkeys,
+    ),
+    false,
+  );
+});
+
 test("coalesceAgentAutocompleteCandidates: merges agents with the same persona id", () => {
   const first = makeAgent({ pubkey: PUB_A, personaId: "pinky" });
   const second = makeAgent({
