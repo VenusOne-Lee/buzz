@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manage Buzz Cloud Agents"
+  short_description: "Safely manage Buzz agents on VPS and Docker"
+  default_prompt: "Use $manage-buzz-cloud-agents to inspect or manage my Buzz cloud agents through SSH."
