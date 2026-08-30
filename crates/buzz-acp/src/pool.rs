@@ -610,6 +610,13 @@ impl AgentPool {
 
     /// Return an agent to its slot after a task completes.
     pub fn return_agent(&mut self, agent: OwnedAgent) {
+        // The agent process itself is healthy and being kept, but its last
+        // turn may have left a stray descendant behind (the wrapped `claude`
+        // binary or an MCP server subprocess) if its own internal cleanup
+        // didn't fully tear down after a cancel. Reap those now, while we
+        // know nothing legitimate is running under this agent yet — it isn't
+        // claimed for a new turn until after this call returns.
+        agent.acp.reap_stray_descendants();
         let idx = agent.index;
         if self.agents[idx].is_some() {
             // This is a bug: two tasks returned the same agent index. Log it
