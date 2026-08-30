@@ -162,3 +162,85 @@ export function approvalToDecisionRequest(approval: {
     choices: APPROVAL_CHOICES,
   };
 }
+
+/** The token + display context extracted from a raw approval-requested event
+ * (kind:46010) so the same functional card can be rendered inline in the
+ * channel timeline, not only inside a workflow-run panel. */
+export type ChannelApprovalDescriptor = {
+  /** Plaintext approval token the grant/deny action resolves against (the
+   * `["t", token]` tag, matching the tag `build_approval_grant`/`_deny` emit). */
+  token: string;
+  request: DecisionRequest;
+};
+
+/** First value of the first tag whose name matches `name`. */
+function firstTagValue(
+  tags: ReadonlyArray<ReadonlyArray<string>> | undefined,
+  name: string,
+): string | undefined {
+  return tags?.find((tag) => tag[0] === name)?.[1];
+}
+
+/**
+ * Map a raw approval-requested event (kind:46010) onto the token and decision
+ * request the in-channel card needs. Returns `null` when the event carries no
+ * usable `["t", token]` tag — without a token the card cannot resolve, so it
+ * must fall back to plain rendering rather than show an unactionable control.
+ *
+ * The event body is treated as the human-readable ask (falling back to the
+ * default approval copy); the `title` tag, when present, overrides the heading.
+ * `actor`/`tool`/`target` meta hydrate from the matching tags so the card shows
+ * the same context the workflow-run surface does. Expiry is read from the
+ * `expiration` tag (unix seconds, per NIP convention) when present.
+ */
+export function channelApprovalFromEvent(event: {
+  content?: string | null;
+  tags?: ReadonlyArray<ReadonlyArray<string>>;
+}): ChannelApprovalDescriptor | null {
+  const token = firstTagValue(event.tags, "t")?.trim();
+  if (!token) {
+    return null;
+  }
+
+  const body = event.content?.trim() || undefined;
+  const title =
+    firstTagValue(event.tags, "title")?.trim() || "Approval required";
+  const actor = firstTagValue(event.tags, "actor")?.trim();
+  const tool = firstTagValue(event.tags, "tool")?.trim();
+  const target = firstTagValue(event.tags, "target")?.trim();
+
+  const meta: DecisionMeta = {};
+  if (actor) {
+    meta.actor = actor;
+  }
+  if (tool) {
+    meta.tool = tool;
+  }
+  if (target) {
+    meta.target = target;
+  }
+
+  let expiresAt: string | null = null;
+  const expiration = firstTagValue(event.tags, "expiration");
+  if (expiration) {
+    const seconds = Number.parseInt(expiration, 10);
+    if (Number.isFinite(seconds)) {
+      expiresAt = new Date(seconds * 1000).toISOString();
+    }
+  }
+
+  return {
+    token,
+    request: {
+      kind: "approval",
+      review: true,
+      title,
+      consequence:
+        body ??
+        "This action needs your sign-off before the agent continues. Unanswered requests default to deny.",
+      meta: Object.keys(meta).length > 0 ? meta : undefined,
+      expiresAt,
+      choices: APPROVAL_CHOICES,
+    },
+  };
+}

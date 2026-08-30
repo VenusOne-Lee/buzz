@@ -94,6 +94,7 @@ export const CHANNEL_EVENT_KINDS = [
   KIND_STREAM_MESSAGE_EDIT, // 40003 — message edits
   KIND_STREAM_MESSAGE_DIFF, // 40008 — message diffs
   KIND_SYSTEM_MESSAGE, // 40099 — system messages (join, leave, etc.)
+  KIND_APPROVAL_REQUEST, // 46010 — in-channel approval card
   KIND_HUDDLE_STARTED, // 48100 — visible huddle session card
   KIND_HUDDLE_PARTICIPANT_JOINED, // 48101 — huddle lifecycle overlay
   KIND_HUDDLE_PARTICIPANT_LEFT, // 48102 — huddle lifecycle overlay
@@ -133,6 +134,7 @@ export const CHANNEL_TIMELINE_CONTENT_KINDS = [
   KIND_JOB_RESULT, // 43004
   KIND_JOB_CANCEL, // 43005
   KIND_JOB_ERROR, // 43006
+  KIND_APPROVAL_REQUEST, // 46010 — in-channel approval card (own row)
   KIND_HUDDLE_STARTED, // 48100 — huddle session card
 ] as const;
 
@@ -149,6 +151,7 @@ const NON_CONVERSATIONAL_UNREAD_KINDS: ReadonlySet<number> = new Set([
   KIND_JOB_RESULT, // 43004
   KIND_JOB_CANCEL, // 43005
   KIND_JOB_ERROR, // 43006
+  KIND_APPROVAL_REQUEST, // 46010 — approval cards are visible but non-conversational
   KIND_HUDDLE_STARTED, // 48100 — huddle cards are visible but non-conversational
   KIND_HUDDLE_PARTICIPANT_JOINED, // 48101
   KIND_HUDDLE_PARTICIPANT_LEFT, // 48102

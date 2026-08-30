@@ -25,9 +25,11 @@ import {
   THREAD_REPLY_LINE_WIDTH_REM,
 } from "@/features/messages/lib/threadTreeLayout";
 import {
+  KIND_APPROVAL_REQUEST,
   KIND_HUDDLE_STARTED,
   KIND_STREAM_MESSAGE_DIFF,
 } from "@/shared/constants/kinds";
+import { ChannelApprovalCard } from "@/features/workflows/ui/ChannelApprovalCard";
 import { getConfigNudgeAuthorPubkey } from "@/features/messages/ui/configNudgeAuthPubkey";
 import { cn } from "@/shared/lib/cn";
 import { normalizePubkey } from "@/shared/lib/pubkey";
@@ -338,6 +340,12 @@ export const MessageRow = React.memo(
               channelId={channelId}
               className="mt-2"
               message={message}
+            />
+          );
+        case KIND_APPROVAL_REQUEST:
+          return (
+            <ChannelApprovalCard
+              event={{ content: message.body, tags: message.tags }}
             />
           );
         default:
